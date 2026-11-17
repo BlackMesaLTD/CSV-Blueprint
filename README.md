@@ -8,8 +8,8 @@
 <!-- auto-update:/top-badges -->
 
 <!-- auto-update:rules-counter -->
-[![Static Badge](https://img.shields.io/badge/Rules-344-green?label=Total%20number%20of%20rules&labelColor=darkgreen&color=gray)](schema-examples/full.yml)
-[![Static Badge](https://img.shields.io/badge/Rules-130-green?label=Cell%20rules&labelColor=blue&color=gray)](src/Rules/Cell)
+[![Static Badge](https://img.shields.io/badge/Rules-345-green?label=Total%20number%20of%20rules&labelColor=darkgreen&color=gray)](schema-examples/full.yml)
+[![Static Badge](https://img.shields.io/badge/Rules-131-green?label=Cell%20rules&labelColor=blue&color=gray)](src/Rules/Cell)
 [![Static Badge](https://img.shields.io/badge/Rules-206-green?label=Aggregate%20rules&labelColor=blue&color=gray)](src/Rules/Aggregate)
 [![Static Badge](https://img.shields.io/badge/Rules-8-green?label=Extra%20checks&labelColor=blue&color=gray)](#extra-checks)
 [![Static Badge](https://img.shields.io/badge/Rules-31/11/20-green?label=Plan%20to%20add&labelColor=gray&color=gray)](tests/schemas/todo.yml)
@@ -525,6 +525,7 @@ columns:
       ip_v4_range: [ '127.0.0.1-127.0.0.5', '127.0.0.0/21' ] # Check subnet mask or range for IPv4. Address must be in one of the ranges.
       is_azure_nsg_cidr: true           # Azure NSG address prefix: "*", IPv4/IPv6 address or CIDR, or service tag. Case-insensitive. Example: "10.0.0.0/24", "VirtualNetwork", "Storage.WestEurope".
       is_port: true                     # TCP/UDP port number from 0 to 65535. Example: "443".
+      is_port_range: true               # Range of TCP/UDP ports "start-end" from 0 to 65535. Example: "8000-8100".
       is_mac_address: true              # The input is a valid MAC address. Example: 00:00:5e:00:53:01
       is_domain: true                   # Only domain name. Example: "example.com".
       is_public_domain_suffix: true     # The input is a public ICANN domain suffix. Example: "com", "nom.br", "net" etc.

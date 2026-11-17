@@ -248,6 +248,7 @@ columns:
       ip_v4_range: [ '127.0.0.1-127.0.0.5', '127.0.0.0/21' ] # Check subnet mask or range for IPv4. Address must be in one of the ranges.
       is_azure_nsg_cidr: true           # Azure NSG address prefix: "*", IPv4/IPv6 address or CIDR, or service tag. Case-insensitive. Example: "10.0.0.0/24", "VirtualNetwork", "Storage.WestEurope".
       is_port: true                     # TCP/UDP port number from 0 to 65535. Example: "443".
+      is_port_range: true               # Range of TCP/UDP ports "start-end" from 0 to 65535. Example: "8000-8100".
       is_mac_address: true              # The input is a valid MAC address. Example: 00:00:5e:00:53:01
       is_domain: true                   # Only domain name. Example: "example.com".
       is_public_domain_suffix: true     # The input is a public ICANN domain suffix. Example: "com", "nom.br", "net" etc.
