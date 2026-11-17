@@ -50,7 +50,8 @@
         "roave/security-advisories" : "dev-latest",
         "jbzoo/toolbox-dev"         : "^8.0",
         "jbzoo/codestyle"           : "^8.0",
-        "fakerphp/faker"            : "^1.24.1"
+        "fakerphp/faker"            : "^1.24.1",
+        "vimeo/psalm"               : "^6.16"
     },
 
     "bin"               : ["csv-blueprint"],
