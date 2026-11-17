@@ -53,7 +53,14 @@ This example serves as a comprehensive guide for creating robust CSV file valida
             'description' => 'Lorem ipsum',
             'example'     => 'Some example',
             'required'    => true,
-            'extra'       => [['key' => 'value']],
+            'multiple'    => [
+                'format'    => 'split',
+                'separator' => ',',
+                'count_min' => 1,
+                'count_max' => 10,
+                'unique'    => true,
+            ],
+            'extra' => [['key' => 'value']],
 
             'rules' => [
                 'preset'           => 'my-preset/login',

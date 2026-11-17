@@ -35,9 +35,6 @@ structural_rules:
 columns:
   - empty_values: [ '' ]                # Override csv.empty_values. List of values that will be treated as empty.
 
-    # Multi prop
-    multiple: true
-    multiple_separator: "|"           # Separator for multiple values
     faker: [ faker_method arg1 arg2 ] # Faker method with arguments to generate random CSV data
 
     rules:

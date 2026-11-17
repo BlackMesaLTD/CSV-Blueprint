@@ -17,6 +17,8 @@ declare(strict_types=1);
 namespace JBZoo\CsvBlueprint\Validators;
 
 use JBZoo\CsvBlueprint\Csv\Column;
+use JBZoo\CsvBlueprint\Csv\Exception;
+use JBZoo\CsvBlueprint\Csv\MultipleValue;
 use JBZoo\CsvBlueprint\Rules\Ruleset;
 
 final class ValidatorColumn
@@ -25,24 +27,33 @@ final class ValidatorColumn
     // "1" - is a first line in the CSV file. It's always exists and usefeul for CI reports.
     public const FALLBACK_LINE = 1;
 
-    private Ruleset $cellRuleset;
-    private Ruleset $aggRuleset;
+    private Ruleset        $cellRuleset;
+    private Ruleset        $aggRuleset;
+    private ?MultipleValue $multiple;
+    private string         $columnNameId;
 
     public function __construct(Column $column)
     {
-        $this->cellRuleset = new Ruleset($column->getRules(), $column->getHumanName());
-        $this->aggRuleset = new Ruleset($column->getAggregateRules(), $column->getHumanName());
+        $this->columnNameId = $column->getHumanName();
+        $this->cellRuleset = new Ruleset($column->getRules(), $this->columnNameId);
+        $this->aggRuleset = new Ruleset($column->getAggregateRules(), $this->columnNameId);
+        $this->multiple = $column->getMultiple();
     }
 
     /**
      * Validates a cell value using the specified line number.
+     * If the column defines "multiple", the cell rules run on each item of the list.
      * @param  string     $cellValue the value of the cell to be validated
      * @param  int        $line      the line number associated with the cell
      * @return ErrorSuite returns an ErrorSuite object containing any validation errors encountered
      */
     public function validateCell(string $cellValue, int $line): ErrorSuite
     {
-        return $this->cellRuleset->validateRuleSet($cellValue, $line);
+        if ($this->multiple === null) {
+            return $this->cellRuleset->validateRuleSet($cellValue, $line);
+        }
+
+        return $this->validateMultiple($this->multiple, $cellValue, $line);
     }
 
     /**
@@ -63,5 +74,40 @@ final class ValidatorColumn
     public function getAggregationInputType(): int
     {
         return $this->aggRuleset->getAggregationInputType();
+    }
+
+    private function validateMultiple(MultipleValue $multiple, string $cellValue, int $line): ErrorSuite
+    {
+        $errors = new ErrorSuite();
+
+        try {
+            $items = $multiple->parse($cellValue);
+        } catch (Exception $exception) {
+            return $errors->addError(new Error('multiple', $exception->getMessage(), $this->columnNameId, $line));
+        }
+
+        foreach ($multiple->validateList($items) as [$ruleCode, $message]) {
+            $errors->addError(new Error($ruleCode, $message, $this->columnNameId, $line));
+        }
+
+        // An empty cell is checked the same way as without "multiple", so rules like "not_empty" keep working.
+        if (\trim($cellValue) === '') {
+            return $errors->addErrorSuit($this->cellRuleset->validateRuleSet($cellValue, $line));
+        }
+
+        $total = \count($items);
+        foreach ($items as $index => $item) {
+            $position = $index + 1;
+            foreach ($this->cellRuleset->validateRuleSet($item, $line)->getErrors() as $error) {
+                $errors->addError(new Error(
+                    $error->getRuleCode(),
+                    "Item {$position} of {$total}. {$error->getMessage()}",
+                    $error->getColumnName(),
+                    $line,
+                ));
+            }
+        }
+
+        return $errors;
     }
 }
