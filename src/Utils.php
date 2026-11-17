@@ -292,13 +292,15 @@ final class Utils
             'rules.contains_any',
             'rules.contains_all',
             'rules.ip_v4_range',
+            'rules.any_of',
             'extra',
         ];
 
         foreach ($actualSchema as $key => $value) {
             $curPath = $path === '' ? (string)$key : "{$path}.{$key}";
+            $rulePath = (string)\preg_replace('/^rules\.any_of\.\d+\./', 'rules.', $curPath); // Same rules in groups
 
-            if (\in_array($curPath, $excludeArrayParamsFor, true)) {
+            if (\in_array($rulePath, $excludeArrayParamsFor, true)) {
                 if (!\is_array($value)) {
                     $differences[$columnId . '/' . $curPath] = [
                         $columnId,

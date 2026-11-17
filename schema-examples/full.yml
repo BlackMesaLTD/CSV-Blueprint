@@ -105,6 +105,10 @@ columns:
       allow_values: [ y, n, "" ]        # Strict set of values that are allowed.
       not_allow_values: [ invalid ]     # Strict set of values that are NOT allowed.
 
+      # The value must pass at least one group of cell rules. All rules inside a group must pass.
+      # Groups can't contain "any_of" again.
+      any_of: [ { is_ip: true }, { is_domain: true } ]      # IP address or domain name.
+
       # Any valid regex pattern. See: https://www.php.net/manual/en/reference.pcre.pattern.syntax.php
       # Of course it's a super powerful tool to verify any sort of string data.
       # Please, be careful. Regex is a powerful tool, but it can be very dangerous if used incorrectly.
