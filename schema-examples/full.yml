@@ -76,7 +76,8 @@ columns:
     required: true
 
     # Treat each cell as a list of values. The cell rules below then run on each item, and errors name the item,
-    # e.g. "Item 2 of 3". An empty cell is checked as without "multiple". Aggregate rules still see the whole cell.
+    # e.g. "Item 2 of 3". An empty item is an error. An empty cell is checked as without "multiple" (see "not_empty"),
+    # so the list checks below only apply to non-empty cells. Aggregate rules still see the whole cell.
     multiple:
       format: split                     # How to read the list. Available: "split" (a,b), "json" (["a","b"]), "literal" (['a', 'b'], quotes and brackets optional, trailing comma allowed).
       separator: ","                    # Separator between items. Only for "split".

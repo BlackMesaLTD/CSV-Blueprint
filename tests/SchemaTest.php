@@ -316,6 +316,7 @@ final class SchemaTest extends TestCase
             ['name' => 'type', 'multiple' => true],
             ['name' => 'key', 'multiple' => ['sorted' => true]],
             ['name' => 'example', 'multiple' => ['format' => 'literal'], 'example' => "['a', 'b"],
+            ['name' => 'types', 'multiple' => ['format' => ['json'], 'count_min' => '1']],
         ]]);
 
         isSame(
@@ -326,7 +327,9 @@ final class SchemaTest extends TestCase
                     . 'The "multiple.count_min" (3) must not be greater than "multiple.count_max" (2).',
                 '"schema", column "3:type". Expected type "array", actual "boolean" in .columns.3.multiple.',
                 '"schema", column "4:key". Unknown key: .columns.4.multiple.sorted.',
-                '"multiple", column "5:example". Value "[\'a\', \'b" has an unclosed "[".',
+                '"multiple.format", column "5:example". Value "[\'a\', \'b" has an unclosed "[".',
+                '"schema", column "6:types". Expected type "string", actual "array" in .columns.6.multiple.format.',
+                '"schema", column "6:types". Expected type "integer", actual "string" in .columns.6.multiple.count_min.',
             ],
             \array_map(static fn ($error) => $error->toCleanString(), $schema->validate()->getErrors()),
         );

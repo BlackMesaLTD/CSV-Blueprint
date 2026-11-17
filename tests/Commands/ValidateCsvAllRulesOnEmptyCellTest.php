@@ -43,13 +43,11 @@ final class ValidateCsvAllRulesOnEmptyCellTest extends TestCase
             
             CSV file validation: 1
             Schema: ./schema-examples/full.yml
-              38 issues in ./tests/fixtures/empty_cells.csv; Size: 123.34 MB
+              36 issues in ./tests/fixtures/empty_cells.csv; Size: 123.34 MB
                 +------+------------------------------+----------------------------+------------------------------------------------------------------------------------------------------+
                 | Line | id:Column                    | Rule                       | Message                                                                                              |
                 +------+------------------------------+----------------------------+------------------------------------------------------------------------------------------------------+
-                |    2 | 0:Column Name (header)       | multiple.count_min         | The list has 0 items, which is less than the expected minimum of 1                                   |
                 |    2 | 0:Column Name (header)       | not_empty                  | Value is empty                                                                                       |
-                |    3 | 0:Column Name (header)       | multiple.count_min         | The list has 0 items, which is less than the expected minimum of 1                                   |
                 |    3 | 0:Column Name (header)       | not_empty                  | Value is empty                                                                                       |
                 |    1 | 0:Column Name (header)       | ag:is_unique               | Column has non-unique values. Unique: 1, total: 2                                                    |
                 |    1 | 0:Column Name (header)       | ag:first_num_min           | The first value in the column is "0", which is less than the expected "1"                            |
@@ -90,7 +88,7 @@ final class ValidateCsvAllRulesOnEmptyCellTest extends TestCase
             Summary:
               1 pairs (schema to csv) were found based on `filename_pattern`.
               No issues in 1 schemas.
-              Found 38 issues in 1 out of 1 CSV files.
+              Found 36 issues in 1 out of 1 CSV files.
             
             
             TXT;

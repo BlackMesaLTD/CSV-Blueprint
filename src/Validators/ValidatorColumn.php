@@ -78,21 +78,23 @@ final class ValidatorColumn
 
     private function validateMultiple(MultipleValue $multiple, string $cellValue, int $line): ErrorSuite
     {
+        // An empty cell is checked the same way as without "multiple", so "not_empty" decides if it's allowed.
+        if (\trim($cellValue) === '') {
+            return $this->cellRuleset->validateRuleSet($cellValue, $line);
+        }
+
         $errors = new ErrorSuite();
 
         try {
             $items = $multiple->parse($cellValue);
         } catch (Exception $exception) {
-            return $errors->addError(new Error('multiple', $exception->getMessage(), $this->columnNameId, $line));
+            return $errors->addError(
+                new Error('multiple.format', $exception->getMessage(), $this->columnNameId, $line),
+            );
         }
 
         foreach ($multiple->validateList($items) as [$ruleCode, $message]) {
             $errors->addError(new Error($ruleCode, $message, $this->columnNameId, $line));
-        }
-
-        // An empty cell is checked the same way as without "multiple", so rules like "not_empty" keep working.
-        if (\trim($cellValue) === '') {
-            return $errors->addErrorSuit($this->cellRuleset->validateRuleSet($cellValue, $line));
         }
 
         $total = \count($items);

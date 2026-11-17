@@ -37,6 +37,8 @@ final class MultipleValue
         'unique'    => false,
     ];
 
+    private const SPACES = " \t\r\n";
+
     /**
      * @param non-empty-string $separator
      */
@@ -50,22 +52,34 @@ final class MultipleValue
     }
 
     /**
-     * Splits a cell into its items. An empty cell is an empty list.
+     * Splits a cell into its items. An empty cell is an empty list, an empty item is an error.
      * @param  string    $cellValue the raw cell value
      * @return string[]  the items, in order
      * @throws Exception if the cell can't be read as a list in the configured format
      */
     public function parse(string $cellValue): array
     {
-        if (\trim($cellValue) === '') {
+        if (\trim($cellValue, self::SPACES) === '') {
             return [];
         }
 
-        return match ($this->format) {
+        $items = match ($this->format) {
             self::FORMAT_JSON    => self::parseJson($cellValue),
             self::FORMAT_LITERAL => self::parseLiteral($cellValue),
-            default              => \array_map('\trim', \explode($this->separator, $cellValue)),
+            default              => \array_map(
+                static fn (string $item): string => \trim($item, self::SPACES),
+                \explode($this->separator, $cellValue),
+            ),
         };
+
+        foreach ($items as $index => $item) {
+            if ($item === '') {
+                $position = $index + 1;
+                throw new Exception("Value \"<c>{$cellValue}</c>\" item {$position} is empty");
+            }
+        }
+
+        return $items;
     }
 
     /**
@@ -111,20 +125,20 @@ final class MultipleValue
      * Creates the parser from the column's "multiple" config. Missing keys fall back to their defaults.
      * @param  array     $config the "multiple" section of a column
      * @return self      the configured parser
-     * @throws Exception if a value is out of range or the format is unknown
+     * @throws Exception if a value has the wrong type, is out of range or the format is unknown
      */
     public static function fromConfig(array $config): self
     {
         $config += self::DEFAULTS;
 
-        $format = (string)$config['format'];
+        $format = self::toString($config['format'], 'format');
         if (!\in_array($format, self::FORMATS, true)) {
             throw new Exception(
                 "Unknown format \"{$format}\" for \"multiple\". Allowed: " . Utils::printList(self::FORMATS),
             );
         }
 
-        $separator = (string)$config['separator'];
+        $separator = self::toString($config['separator'], 'separator');
         if ($separator === '') {
             throw new Exception('The "multiple.separator" must not be empty');
         }
@@ -138,7 +152,20 @@ final class MultipleValue
             );
         }
 
-        return new self($format, $separator, $countMin, $countMax, (bool)$config['unique']);
+        if (!\is_bool($config['unique'])) {
+            throw new Exception('The "multiple.unique" must be true or false');
+        }
+
+        return new self($format, $separator, $countMin, $countMax, $config['unique']);
+    }
+
+    private static function toString(mixed $value, string $key): string
+    {
+        if (!\is_string($value)) {
+            throw new Exception("The \"multiple.{$key}\" must be a string");
+        }
+
+        return $value;
     }
 
     private static function toCount(mixed $value, string $key): ?int
@@ -147,25 +174,30 @@ final class MultipleValue
             return null;
         }
 
-        if ((int)$value < 0) {
+        if (!\is_int($value)) {
+            throw new Exception("The \"multiple.{$key}\" must be an integer");
+        }
+
+        if ($value < 0) {
             throw new Exception("The \"multiple.{$key}\" must be 0 or greater");
         }
 
-        return (int)$value;
+        return $value;
     }
 
     /**
+     * Numbers are read as JSON numbers, so "1.0" becomes "1". Big integers are kept as written.
      * @return string[]
      */
     private static function parseJson(string $cellValue): array
     {
         try {
-            $decoded = \json_decode($cellValue, true, 512, \JSON_THROW_ON_ERROR);
+            $decoded = \json_decode($cellValue, false, 512, \JSON_THROW_ON_ERROR | \JSON_BIGINT_AS_STRING);
         } catch (\JsonException $exception) {
             throw new Exception("Value \"<c>{$cellValue}</c>\" is not a valid JSON array: {$exception->getMessage()}");
         }
 
-        if (!\is_array($decoded) || !\array_is_list($decoded)) {
+        if (!\is_array($decoded)) {
             throw new Exception("Value \"<c>{$cellValue}</c>\" is not a JSON array");
         }
 
@@ -193,44 +225,20 @@ final class MultipleValue
      */
     private static function parseLiteral(string $cellValue): array
     {
-        $value = \trim($cellValue);
-
-        $opens = \str_starts_with($value, '[');
-        $closes = \str_ends_with($value, ']');
-        if ($opens && !$closes) {
-            throw new Exception("Value \"<c>{$cellValue}</c>\" has an unclosed \"[\"");
-        }
-        if ($closes && !$opens) {
-            throw new Exception("Value \"<c>{$cellValue}</c>\" has an unexpected \"]\"");
-        }
-        if ($opens) {
-            $value = \substr($value, 1, -1);
-        }
-
-        $items = [];
+        $value = self::stripBrackets($cellValue);
         $length = \strlen($value);
+        $items = [];
         $pos = self::skipSpaces($value, 0);
 
         while ($pos < $length) {
             $position = \count($items) + 1;
-            $char = $value[$pos];
 
-            if ($char === '"' || $char === "'") {
-                [$item, $pos] = self::readQuoted($value, $pos, $cellValue, $position);
-            } else {
-                $end = \strpos($value, ',', $pos);
-                $end = $end === false ? $length : $end;
-                $item = \trim(\substr($value, $pos, $end - $pos));
-                $pos = $end;
-
-                if ($item === '') {
-                    throw new Exception("Value \"<c>{$cellValue}</c>\" item {$position} is empty");
-                }
-            }
-
+            [$item, $pos] = $value[$pos] === '"' || $value[$pos] === "'"
+                ? self::readQuoted($value, $pos, $cellValue, $position)
+                : self::readBare($value, $pos, $cellValue, $position);
             $items[] = $item;
-            $pos = self::skipSpaces($value, $pos);
 
+            $pos = self::skipSpaces($value, $pos);
             if ($pos < $length) {
                 if ($value[$pos] !== ',') {
                     throw new Exception("Value \"<c>{$cellValue}</c>\" expected \",\" after item {$position}");
@@ -240,6 +248,36 @@ final class MultipleValue
         }
 
         return $items;
+    }
+
+    private static function stripBrackets(string $cellValue): string
+    {
+        $value = \trim($cellValue, self::SPACES);
+        $opens = \str_starts_with($value, '[');
+        $closes = \str_ends_with($value, ']');
+
+        if ($opens !== $closes) {
+            $problem = $opens ? 'an unclosed "["' : 'an unexpected "]"';
+            throw new Exception("Value \"<c>{$cellValue}</c>\" has {$problem}");
+        }
+
+        return $opens ? \substr($value, 1, -1) : $value;
+    }
+
+    /**
+     * @return array{string,int} the item and the position after it
+     */
+    private static function readBare(string $value, int $pos, string $cellValue, int $position): array
+    {
+        $end = \strpos($value, ',', $pos);
+        $end = $end === false ? \strlen($value) : $end;
+        $item = \trim(\substr($value, $pos, $end - $pos), self::SPACES);
+
+        if (\strpbrk($item, '[]') !== false) {
+            throw new Exception("Value \"<c>{$cellValue}</c>\" item {$position} has an unexpected bracket");
+        }
+
+        return [$item, $end];
     }
 
     /**
@@ -268,6 +306,6 @@ final class MultipleValue
 
     private static function skipSpaces(string $value, int $pos): int
     {
-        return $pos + \strspn($value, " \t\r\n", $pos);
+        return $pos + \strspn($value, self::SPACES, $pos);
     }
 }

@@ -17,8 +17,10 @@ declare(strict_types=1);
 namespace JBZoo\PHPUnit\Validators;
 
 use JBZoo\CsvBlueprint\Csv\Column;
+use JBZoo\CsvBlueprint\Csv\CsvFile;
 use JBZoo\CsvBlueprint\Validators\Error;
 use JBZoo\PHPUnit\TestCase;
+use JBZoo\PHPUnit\Tools;
 
 use function JBZoo\PHPUnit\isSame;
 
@@ -99,7 +101,7 @@ final class ValidatorColumnMultipleTest extends TestCase
         ]);
 
         isSame(
-            ['"multiple" at line 5, column "0:prefixes". '
+            ['"multiple.format" at line 5, column "0:prefixes". '
                 . "Value \"['10.0.0.0/8', '10.1.0.0/16'\" has an unclosed \"[\"."],
             self::errors($column, "['10.0.0.0/8', '10.1.0.0/16'"),
         );
@@ -112,21 +114,46 @@ final class ValidatorColumnMultipleTest extends TestCase
             'rules'    => ['not_empty' => true, 'is_azure_nsg_cidr' => true],
         ]);
 
-        isSame(
-            [
-                '"multiple.count_min" at line 5, column "0:prefixes". '
-                    . 'The list has 0 items, which is less than the expected minimum of 1.',
-                '"not_empty" at line 5, column "0:prefixes". Value is empty.',
-            ],
-            self::errors($column, ''),
-        );
+        isSame(['"not_empty" at line 5, column "0:prefixes". Value is empty.'], self::errors($column, ''));
 
         $column = self::column([
-            'multiple' => ['format' => 'literal'],
+            'multiple' => ['format' => 'literal', 'count_min' => 1],
             'rules'    => ['not_empty' => false, 'is_azure_nsg_cidr' => true],
         ]);
         isSame([], self::errors($column, ''));
-        isSame([], self::errors($column, '[]'));
+        isSame(
+            ['"is_azure_nsg_cidr" at line 5, column "0:prefixes". Value "  " is not a valid Azure NSG address prefix.'],
+            self::errors($column, '  '),
+        );
+        isSame(
+            ['"multiple.count_min" at line 5, column "0:prefixes". '
+                . 'The list has 0 items, which is less than the expected minimum of 1.'],
+            self::errors($column, '[]'),
+        );
+    }
+
+    public function testColumnWithoutRules(): void
+    {
+        $csv = new CsvFile(Tools::CSV_SIMPLE_HEADER, [
+            'csv'     => ['header' => true],
+            'columns' => [
+                ['name' => 'seq'],
+                ['name' => 'bool', 'multiple' => ['count_min' => 2]],
+                ['name' => 'exact'],
+            ],
+        ]);
+
+        isSame(
+            [
+                '"multiple.count_min" at line 2, column "1:bool". '
+                    . 'The list has 1 item, which is less than the expected minimum of 2.',
+                '"multiple.count_min" at line 3, column "1:bool". '
+                    . 'The list has 1 item, which is less than the expected minimum of 2.',
+                '"multiple.count_min" at line 4, column "1:bool". '
+                    . 'The list has 1 item, which is less than the expected minimum of 2.',
+            ],
+            \array_map(static fn (Error $error): string => $error->toCleanString(), $csv->validate()->getErrors()),
+        );
     }
 
     private static function column(array $config): Column

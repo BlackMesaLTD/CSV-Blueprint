@@ -40,8 +40,10 @@ final class MultipleValueTest extends TestCase
         isSame(['a'], $multiple->parse('a'));
         isSame(['a', 'b', 'c'], $multiple->parse('a|b|c'));
         isSame(['a', 'b'], $multiple->parse(' a | b '));
-        isSame(['a', '', 'b'], $multiple->parse('a||b'));
         isSame(['a,b'], $multiple->parse('a,b'));
+        self::assertParseError($multiple, 'a||b', 'item 2 is empty');
+        self::assertParseError($multiple, 'a|b|', 'item 3 is empty');
+        self::assertParseError($multiple, '|a', 'item 1 is empty');
 
         $multiple = MultipleValue::fromConfig(['separator' => ', ']);
         isSame(['10.0.0.0/8', '192.168.0.0/16'], $multiple->parse('10.0.0.0/8, 192.168.0.0/16'));
@@ -56,6 +58,7 @@ final class MultipleValueTest extends TestCase
         isSame(['10.0.0.0/8', '192.168.0.0/16'], $multiple->parse('["10.0.0.0/8","192.168.0.0/16"]'));
         isSame(['80', '443', '1.5', 'true', 'false'], $multiple->parse('[80, 443, 1.5, true, false]'));
         isSame(['a,b', 'c'], $multiple->parse('["a,b", "c"]'));
+        isSame(['12345678901234567890', '1'], $multiple->parse('[12345678901234567890, 1.0]'));
     }
 
     public function testJsonInvalid(): void
@@ -66,6 +69,9 @@ final class MultipleValueTest extends TestCase
         self::assertParseError($multiple, '["a", "b",]', 'is not a valid JSON array: Syntax error');
         self::assertParseError($multiple, '"a"', 'is not a JSON array');
         self::assertParseError($multiple, '{"a": "b"}', 'is not a JSON array');
+        self::assertParseError($multiple, '{}', 'is not a JSON array');
+        self::assertParseError($multiple, '["a", {"b": 1}]', 'item 2 is not a string, number or boolean');
+        self::assertParseError($multiple, '["a", ""]', 'item 2 is empty');
         self::assertParseError($multiple, '["a", ["b"]]', 'item 2 is not a string, number or boolean');
         self::assertParseError($multiple, '["a", null]', 'item 2 is not a string, number or boolean');
     }
@@ -86,7 +92,6 @@ final class MultipleValueTest extends TestCase
         isSame(['a,b', 'c'], $multiple->parse("['a,b', 'c']"));
         isSame(["it's", 'say "hi"'], $multiple->parse("['it\\'s', \"say \\\"hi\\\"\"]"));
         isSame(['back\slash'], $multiple->parse("['back\\\\slash']"));
-        isSame(['', 'a'], $multiple->parse("['', 'a']"));
         isSame(['VirtualNetwork', 'Storage.WestEurope'], $multiple->parse("[VirtualNetwork,'Storage.WestEurope']"));
         isSame(['naïve', 'café'], $multiple->parse("['naïve', 'café']"));
     }
@@ -103,6 +108,9 @@ final class MultipleValueTest extends TestCase
         self::assertParseError($multiple, "['a',, 'b']", 'item 2 is empty');
         self::assertParseError($multiple, "[, 'a']", 'item 1 is empty');
         self::assertParseError($multiple, '[,]', 'item 1 is empty');
+        self::assertParseError($multiple, "['', 'a']", 'item 1 is empty');
+        self::assertParseError($multiple, '[a, b]]', 'item 2 has an unexpected bracket');
+        self::assertParseError($multiple, '[[a, b]]', 'item 1 has an unexpected bracket');
     }
 
     public function testCountMin(): void
@@ -156,6 +164,10 @@ final class MultipleValueTest extends TestCase
             ['count_min' => 3, 'count_max' => 2],
             'The "multiple.count_min" (3) must not be greater than "multiple.count_max" (2)',
         );
+        self::assertConfigError(['format' => ['json']], 'The "multiple.format" must be a string');
+        self::assertConfigError(['separator' => 1], 'The "multiple.separator" must be a string');
+        self::assertConfigError(['count_min' => '2'], 'The "multiple.count_min" must be an integer');
+        self::assertConfigError(['unique' => 'yes'], 'The "multiple.unique" must be true or false');
     }
 
     private static function assertParseError(MultipleValue $multiple, string $cellValue, string $reason): void

@@ -108,7 +108,9 @@ final class ValidatorSchema
             $columnId = "{$columnKey}:" . ($actualColumn['name'] ?? '');
 
             // Validate column names
-            $errors->addErrorSuit($this->validateColumn($actualColumn, $columnId, (int)$columnKey));
+            $errors->addErrorSuit(
+                $this->validateColumn($actualColumn, $columnId, (int)$columnKey, $expectedColumn['multiple']),
+            );
             if ($quickStop && $errors->count() > 0) {
                 return $errors;
             }
@@ -132,11 +134,15 @@ final class ValidatorSchema
         return $errors;
     }
 
-    private function validateColumn(array $actualColumn, string $columnId, int $columnKey): ErrorSuite
-    {
+    private function validateColumn(
+        array $actualColumn,
+        string $columnId,
+        int $columnKey,
+        array $expectedMultiple,
+    ): ErrorSuite {
         $errors = (new ErrorSuite())->addError($this->validateColumnName($actualColumn, $columnId));
 
-        $multipleError = self::validateColumnMultiple($actualColumn, $columnId);
+        $multipleError = self::validateColumnMultiple($actualColumn, $columnId, $expectedMultiple);
         if ($multipleError !== null) {
             return $errors->addError($multipleError); // The example can't be read without a valid "multiple"
         }
@@ -157,10 +163,17 @@ final class ValidatorSchema
         return null;
     }
 
-    private static function validateColumnMultiple(array $actualColumn, string $columnId): ?Error
-    {
-        if (!isset($actualColumn['multiple']) || !\is_array($actualColumn['multiple'])) {
-            return null; // Missing or wrong type, the type is reported by the schema comparison
+    private static function validateColumnMultiple(
+        array $actualColumn,
+        string $columnId,
+        array $expectedMultiple,
+    ): ?Error {
+        if (
+            !isset($actualColumn['multiple'])
+            || !\is_array($actualColumn['multiple'])
+            || \count(Utils::compareArray($expectedMultiple, $actualColumn['multiple'])) > 0
+        ) {
+            return null; // Missing, or wrong keys and types that the schema comparison reports
         }
 
         try {
