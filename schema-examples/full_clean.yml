@@ -49,6 +49,12 @@ columns:
     description: 'Lorem ipsum'
     example: 'Some example'
     required: true
+    multiple:
+      format: split
+      separator: ','
+      count_min: 1
+      count_max: 10
+      unique: true
     extra:
       - key: value
 

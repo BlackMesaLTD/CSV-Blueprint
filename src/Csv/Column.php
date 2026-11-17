@@ -131,6 +131,19 @@ final class Column
     }
 
     /**
+     * Retrieves how to read a cell as a list of values, if the column defines "multiple".
+     * @return null|MultipleValue null if every cell is a single value
+     */
+    public function getMultiple(): ?MultipleValue
+    {
+        if (!$this->internalData->has('multiple')) {
+            return null;
+        }
+
+        return MultipleValue::fromConfig($this->internalData->getArray('multiple'));
+    }
+
+    /**
      * Retrieves the validator for the column.
      * Creates and returns a new instance of the ValidatorColumn class, initialized with the current object.
      * The ValidatorColumn class is responsible for validating the column based on certain rules and criteria.

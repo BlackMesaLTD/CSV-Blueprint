@@ -17,6 +17,8 @@ declare(strict_types=1);
 namespace JBZoo\CsvBlueprint\Validators;
 
 use JBZoo\CsvBlueprint\Csv\Column;
+use JBZoo\CsvBlueprint\Csv\Exception as CsvException;
+use JBZoo\CsvBlueprint\Csv\MultipleValue;
 use JBZoo\CsvBlueprint\Schema;
 use JBZoo\CsvBlueprint\Utils;
 use JBZoo\Data\AbstractData;
@@ -106,7 +108,9 @@ final class ValidatorSchema
             $columnId = "{$columnKey}:" . ($actualColumn['name'] ?? '');
 
             // Validate column names
-            $errors->addErrorSuit($this->validateColumn($actualColumn, $columnId, (int)$columnKey));
+            $errors->addErrorSuit(
+                $this->validateColumn($actualColumn, $columnId, (int)$columnKey, $expectedColumn['multiple']),
+            );
             if ($quickStop && $errors->count() > 0) {
                 return $errors;
             }
@@ -130,11 +134,20 @@ final class ValidatorSchema
         return $errors;
     }
 
-    private function validateColumn(array $actualColumn, string $columnId, int $columnKey): ErrorSuite
-    {
-        return (new ErrorSuite())
-            ->addError($this->validateColumnName($actualColumn, $columnId))
-            ->addErrorSuit(self::validateColumnExample($actualColumn, $columnKey));
+    private function validateColumn(
+        array $actualColumn,
+        string $columnId,
+        int $columnKey,
+        array $expectedMultiple,
+    ): ErrorSuite {
+        $errors = (new ErrorSuite())->addError($this->validateColumnName($actualColumn, $columnId));
+
+        $multipleError = self::validateColumnMultiple($actualColumn, $columnId, $expectedMultiple);
+        if ($multipleError !== null) {
+            return $errors->addError($multipleError); // The example can't be read without a valid "multiple"
+        }
+
+        return $errors->addErrorSuit(self::validateColumnExample($actualColumn, $columnKey));
     }
 
     private function validateColumnName(array $actualColumn, string $columnId): ?Error
@@ -145,6 +158,28 @@ final class ValidatorSchema
                 'The key "<c>name</c>" must be non-empty because the option "<green>csv.header</green>" = true',
                 $columnId,
             );
+        }
+
+        return null;
+    }
+
+    private static function validateColumnMultiple(
+        array $actualColumn,
+        string $columnId,
+        array $expectedMultiple,
+    ): ?Error {
+        if (
+            !isset($actualColumn['multiple'])
+            || !\is_array($actualColumn['multiple'])
+            || \count(Utils::compareArray($expectedMultiple, $actualColumn['multiple'])) > 0
+        ) {
+            return null; // Missing, or wrong keys and types that the schema comparison reports
+        }
+
+        try {
+            MultipleValue::fromConfig($actualColumn['multiple']);
+        } catch (CsvException $exception) {
+            return new Error('schema', $exception->getMessage(), $columnId);
         }
 
         return null;

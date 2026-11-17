@@ -307,6 +307,34 @@ final class SchemaTest extends TestCase
         isSame([], $invalidPairs);
     }
 
+    public function testValidateMultiple(): void
+    {
+        $schema = new Schema(['columns' => [
+            ['name' => 'ok', 'multiple' => ['format' => 'literal', 'count_min' => 1]],
+            ['name' => 'format', 'multiple' => ['format' => 'csv']],
+            ['name' => 'counts', 'multiple' => ['count_min' => 3, 'count_max' => 2]],
+            ['name' => 'type', 'multiple' => true],
+            ['name' => 'key', 'multiple' => ['sorted' => true]],
+            ['name' => 'example', 'multiple' => ['format' => 'literal'], 'example' => "['a', 'b"],
+            ['name' => 'types', 'multiple' => ['format' => ['json'], 'count_min' => '1']],
+        ]]);
+
+        isSame(
+            [
+                '"schema", column "1:format". Unknown format "csv" for "multiple". '
+                    . 'Allowed: ["split", "json", "literal"].',
+                '"schema", column "2:counts". '
+                    . 'The "multiple.count_min" (3) must not be greater than "multiple.count_max" (2).',
+                '"schema", column "3:type". Expected type "array", actual "boolean" in .columns.3.multiple.',
+                '"schema", column "4:key". Unknown key: .columns.4.multiple.sorted.',
+                '"multiple.format", column "5:example". Value "[\'a\', \'b" has an unclosed "[".',
+                '"schema", column "6:types". Expected type "string", actual "array" in .columns.6.multiple.format.',
+                '"schema", column "6:types". Expected type "integer", actual "string" in .columns.6.multiple.count_min.',
+            ],
+            \array_map(static fn ($error) => $error->toCleanString(), $schema->validate()->getErrors()),
+        );
+    }
+
     public function testScalarYamlDocument(): void
     {
         $this->expectExceptionMessage('Schema must be a YAML mapping: ./tests/schemas/scalar.yml');

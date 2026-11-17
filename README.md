@@ -352,6 +352,16 @@ columns:
     # By default, the column is required. It works only if "csv.header" is true and "structural_rules.allow_extra_columns" is false.
     required: true
 
+    # Treat each cell as a list of values. The cell rules below then run on each item, and errors name the item,
+    # e.g. "Item 2 of 3". An empty item is an error. An empty cell is checked as without "multiple" (see "not_empty"),
+    # so the list checks below only apply to non-empty cells. Aggregate rules still see the whole cell.
+    multiple:
+      format: split                     # How to read the list. Available: "split" (a,b), "json" (["a","b"]), "literal" (['a', 'b'], quotes and brackets optional, trailing comma allowed).
+      separator: ","                    # Separator between items. Only for "split".
+      count_min: 1                      # Minimum number of items in the list.
+      count_max: 10                     # Maximum number of items in the list.
+      unique: true                      # Items must not repeat within one cell.
+
     # Add any extra data you want. It will be ignored by the tool but available for your own code.
     # You can use any format and store anything. Examples:
     # extra: 'some text'

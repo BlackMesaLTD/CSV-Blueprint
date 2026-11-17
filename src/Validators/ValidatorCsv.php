@@ -142,7 +142,7 @@ final class ValidatorCsv
             Utils::debug("{$messPrefix} Validator created");
 
             $isAggRules = \count($column->getAggregateRules()) > 0;
-            $isRules = \count($column->getRules()) > 0;
+            $isRules = \count($column->getRules()) > 0 || $column->getMultiple() !== null;
             $aggInputType = $isAggRules ? $colValidator->getAggregationInputType() : AbstractRule::INPUT_TYPE_UNDEF;
             Utils::debug("{$messPrefix} Aggregation Flag: {$aggInputType}");
 
