@@ -36,7 +36,7 @@
         "jbzoo/utils"                         : "^8.0",
         "jbzoo/ci-report-converter"           : "^8.0",
 
-        "symfony/yaml"                        : "^7.4.14",
+        "symfony/yaml"                        : "^7.4.23",
         "symfony/filesystem"                  : "^7.4.11",
         "symfony/finder"                      : "^7.4.14",
         "symfony/console"                     : "^7.4.14",
