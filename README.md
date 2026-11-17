@@ -8,8 +8,8 @@
 <!-- auto-update:/top-badges -->
 
 <!-- auto-update:rules-counter -->
-[![Static Badge](https://img.shields.io/badge/Rules-343-green?label=Total%20number%20of%20rules&labelColor=darkgreen&color=gray)](schema-examples/full.yml)
-[![Static Badge](https://img.shields.io/badge/Rules-129-green?label=Cell%20rules&labelColor=blue&color=gray)](src/Rules/Cell)
+[![Static Badge](https://img.shields.io/badge/Rules-344-green?label=Total%20number%20of%20rules&labelColor=darkgreen&color=gray)](schema-examples/full.yml)
+[![Static Badge](https://img.shields.io/badge/Rules-130-green?label=Cell%20rules&labelColor=blue&color=gray)](src/Rules/Cell)
 [![Static Badge](https://img.shields.io/badge/Rules-206-green?label=Aggregate%20rules&labelColor=blue&color=gray)](src/Rules/Aggregate)
 [![Static Badge](https://img.shields.io/badge/Rules-8-green?label=Extra%20checks&labelColor=blue&color=gray)](#extra-checks)
 [![Static Badge](https://img.shields.io/badge/Rules-31/11/20-green?label=Plan%20to%20add&labelColor=gray&color=gray)](tests/schemas/todo.yml)
@@ -381,6 +381,10 @@ columns:
       exact_value: Some string          # Exact value for string in the column.
       allow_values: [ y, n, "" ]        # Strict set of values that are allowed.
       not_allow_values: [ invalid ]     # Strict set of values that are NOT allowed.
+
+      # The value must pass at least one group of cell rules. All rules inside a group must pass.
+      # Groups can't contain "any_of" again.
+      any_of: [ { is_ip: true }, { is_domain: true } ]      # IP address or domain name.
 
       # Any valid regex pattern. See: https://www.php.net/manual/en/reference.pcre.pattern.syntax.php
       # Of course it's a super powerful tool to verify any sort of string data.

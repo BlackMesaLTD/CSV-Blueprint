@@ -68,6 +68,10 @@ This example serves as a comprehensive guide for creating robust CSV file valida
                 'exact_value'      => 'Some string',
                 'allow_values'     => ['y', 'n', ''],
                 'not_allow_values' => ['invalid'],
+                'any_of'           => [
+                    ['is_ip' => true],
+                    ['is_domain' => true],
+                ],
 
                 'regex' => '/^[\d]{2}$/',
 

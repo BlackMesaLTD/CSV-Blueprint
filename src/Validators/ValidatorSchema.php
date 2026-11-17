@@ -109,7 +109,7 @@ final class ValidatorSchema
 
             // Validate column names
             $errors->addErrorSuit(
-                $this->validateColumn($actualColumn, $columnId, (int)$columnKey, $expectedColumn['multiple']),
+                $this->validateColumn($actualColumn, $columnId, (int)$columnKey, $expectedColumn),
             );
             if ($quickStop && $errors->count() > 0) {
                 return $errors;
@@ -138,11 +138,13 @@ final class ValidatorSchema
         array $actualColumn,
         string $columnId,
         int $columnKey,
-        array $expectedMultiple,
+        array $expectedColumn,
     ): ErrorSuite {
-        $errors = (new ErrorSuite())->addError($this->validateColumnName($actualColumn, $columnId));
+        $errors = (new ErrorSuite())
+            ->addError($this->validateColumnName($actualColumn, $columnId))
+            ->addErrorSuit(self::validateColumnAnyOf($actualColumn, $columnId, $columnKey, $expectedColumn['rules']));
 
-        $multipleError = self::validateColumnMultiple($actualColumn, $columnId, $expectedMultiple);
+        $multipleError = self::validateColumnMultiple($actualColumn, $columnId, $expectedColumn['multiple']);
         if ($multipleError !== null) {
             return $errors->addError($multipleError); // The example can't be read without a valid "multiple"
         }
@@ -161,6 +163,43 @@ final class ValidatorSchema
         }
 
         return null;
+    }
+
+    private static function validateColumnAnyOf(
+        array $actualColumn,
+        string $columnId,
+        int $columnKey,
+        array $expectedRules,
+    ): ErrorSuite {
+        $errors = new ErrorSuite();
+        $groups = $actualColumn['rules']['any_of'] ?? null;
+        if (!\is_array($groups)) {
+            return $errors; // Missing or wrong type, the type is reported by the schema comparison
+        }
+
+        if (\count($groups) === 0) {
+            return $errors->addError(new Error('schema', 'The "rules.any_of" must have at least one group', $columnId));
+        }
+
+        unset($expectedRules['any_of']);
+        foreach ($groups as $index => $group) {
+            $path = "rules.any_of.{$index}";
+
+            if (!\is_array($group) || \count($group) === 0 || \array_is_list($group)) {
+                $errors->addError(new Error('schema', "The \"{$path}\" must be a non-empty set of rules", $columnId));
+                continue;
+            }
+
+            if (\array_key_exists('any_of', $group)) {
+                $errors->addError(new Error('schema', "The \"{$path}\" can't contain \"any_of\"", $columnId));
+            }
+
+            foreach (Utils::compareArray($expectedRules, $group, $columnId, "columns.{$columnKey}", $path) as $diff) {
+                $errors->addError(new Error('schema', $diff[1], $diff[0]));
+            }
+        }
+
+        return $errors;
     }
 
     private static function validateColumnMultiple(

@@ -335,6 +335,35 @@ final class SchemaTest extends TestCase
         );
     }
 
+    public function testValidateAnyOf(): void
+    {
+        $schema = new Schema(['columns' => [
+            ['name' => 'ok', 'rules' => ['any_of' => [
+                ['is_int' => true, 'num_min' => 10],
+                ['allow_values' => ['*', 'any', 'all', 'none']],
+            ]]],
+            ['name' => 'empty', 'rules' => ['any_of' => []]],
+            ['name' => 'list', 'rules' => ['any_of' => ['is_int', []]]],
+            ['name' => 'nested', 'rules' => ['any_of' => [['any_of' => [['is_int' => true]]]]]],
+            ['name' => 'unknown', 'rules' => ['any_of' => [['is_prot' => true], ['is_int' => 'yes']]]],
+            ['name' => 'type', 'rules' => ['any_of' => true]],
+        ]]);
+
+        isSame(
+            [
+                '"schema", column "1:empty". The "rules.any_of" must have at least one group.',
+                '"schema", column "2:list". The "rules.any_of.0" must be a non-empty set of rules.',
+                '"schema", column "2:list". The "rules.any_of.1" must be a non-empty set of rules.',
+                '"schema", column "3:nested". The "rules.any_of.0" can\'t contain "any_of".',
+                '"schema", column "4:unknown". Unknown key: .columns.4.rules.any_of.0.is_prot.',
+                '"schema", column "4:unknown". Expected type "boolean", actual "string" in '
+                    . '.columns.4.rules.any_of.1.is_int.',
+                '"schema", column "5:type". Expected type "array", actual "boolean" in .columns.5.rules.any_of.',
+            ],
+            \array_map(static fn ($error) => $error->toCleanString(), $schema->validate()->getErrors()),
+        );
+    }
+
     public function testScalarYamlDocument(): void
     {
         $this->expectExceptionMessage('Schema must be a YAML mapping: ./tests/schemas/scalar.yml');
