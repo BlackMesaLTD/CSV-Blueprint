@@ -11,5 +11,5 @@
 #
 
 # This schema is valid because match the CSV file (tests/fixtures/demo.csv) perfectly.
-
+name: Broken syntax
 (*$#)@(@$*)(
