@@ -205,6 +205,7 @@ final class SchemaTest extends TestCase
                 'todo.yml',
                 'invalid_schema.yml',
                 'demo_invalid.yml',
+                'scalar.yml',
             ])
             ->files();
 
@@ -304,6 +305,12 @@ final class SchemaTest extends TestCase
         }
 
         isSame([], $invalidPairs);
+    }
+
+    public function testScalarYamlDocument(): void
+    {
+        $this->expectExceptionMessage('Schema must be a YAML mapping: ./tests/schemas/scalar.yml');
+        new Schema('./tests/schemas/scalar.yml');
     }
 
     public function testTodoList(): void

@@ -52,7 +52,12 @@ final class Schema
             $fileExtension = \pathinfo($csvSchemaFilenameOrArray, \PATHINFO_EXTENSION);
 
             if ($fileExtension === 'yml' || $fileExtension === 'yaml') {
-                $data = yml($csvSchemaFilenameOrArray);
+                $parsed = Yaml::parse((string)\file_get_contents($csvSchemaFilenameOrArray));
+                if ($parsed !== null && !\is_array($parsed)) {
+                    throw new Exception("Schema must be a YAML mapping: {$csvSchemaFilenameOrArray}");
+                }
+
+                $data = yml((array)$parsed);
             } elseif ($fileExtension === 'json') {
                 $data = json($csvSchemaFilenameOrArray);
             } elseif ($fileExtension === 'php') {
