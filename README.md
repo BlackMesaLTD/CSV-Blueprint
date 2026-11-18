@@ -1626,6 +1626,8 @@ Options:
   -s, --schema=SCHEMA            Specify the path to a schema file, supporting YAML, JSON, or PHP formats.
                                  Examples: /full/path/name.yml; p/file.yml
   -d, --hide-defaults            Hide default values in the output.
+      --allow-php-schemas        Allows a schema written in PHP. A PHP schema is executed,
+                                 so only use it for files you trust. Presets are never loaded from PHP files.
       --no-progress              Disable progress bar animation for logs. It will be used only for text output format.
       --mute-errors              Mute any sort of errors. So exit code will be always "0" (if it's possible).
                                  It has major priority then --non-zero-on-error. It's on your own risk!

@@ -18,6 +18,7 @@ namespace JBZoo\CsvBlueprint\Commands;
 
 use JBZoo\Cli\CliCommand;
 use JBZoo\CsvBlueprint\Schema;
+use JBZoo\CsvBlueprint\Utils;
 use Symfony\Component\Console\Input\InputOption;
 
 /**
@@ -44,6 +45,15 @@ final class DebugSchema extends CliCommand
                 'd',
                 InputOption::VALUE_NONE,
                 'Hide default values in the output.',
+            )
+            ->addOption(
+                'allow-php-schemas',
+                null,
+                InputOption::VALUE_NONE,
+                \implode("\n", [
+                    'Allows a schema written in PHP. A PHP schema is executed,',
+                    'so only use it for files you trust. Presets are never loaded from PHP files.',
+                ]),
             );
 
         parent::configure();
@@ -53,8 +63,15 @@ final class DebugSchema extends CliCommand
     {
         $decorated = $this->outputMode->getOutput()->isDecorated();
 
+        // The same controls as validate-csv: PHP schemas only on request, no symlinks, no control characters.
+        \putenv(Schema::ENV_ALLOW_PHP . ($this->getOptBool('allow-php-schemas') ? '=1' : ''));
+
         $schemaFilename = $this->getOptString('schema');
-        if (!\file_exists($schemaFilename)) {
+        if (\str_contains($schemaFilename, '*')) {
+            throw new Exception("Expected one schema file, not a pattern: {$schemaFilename}");
+        }
+
+        if (Utils::findFiles([$schemaFilename]) === []) {
             throw new Exception("Schema file not found: {$schemaFilename}");
         }
 
