@@ -33,8 +33,10 @@ final class FileDiscoverySecurityTest extends TestCase
     {
         parent::setUp();
         $suffix = \bin2hex(\random_bytes(4));
-        $this->dir = "./build/file-discovery-{$suffix}";
-        $this->outside = \sys_get_temp_dir() . "/file-discovery-outside-{$suffix}";
+        // Not under ./build: it's git-ignored, and Finder skips git-ignored paths.
+        $tmp = (string)\realpath(\sys_get_temp_dir());
+        $this->dir = "{$tmp}/file-discovery-{$suffix}";
+        $this->outside = "{$tmp}/file-discovery-outside-{$suffix}";
         \mkdir("{$this->dir}/data", 0o777, true);
         \mkdir($this->outside, 0o777, true);
         \file_put_contents("{$this->dir}/data/own.csv", "id\n1\n");
@@ -66,7 +68,7 @@ final class FileDiscoverySecurityTest extends TestCase
     public function testSymlinkedFileMatchedByAGlobIsRefused(): void
     {
         \symlink("{$this->outside}/secret.csv", "{$this->dir}/data/link.csv");
-        $this->assertRefused(["{$this->dir}/data/*.csv"], 'Symlinks are not followed: ./build/');
+        $this->assertRefused(["{$this->dir}/data/*.csv"], "Symlinks are not followed: {$this->dir}/data/link.csv");
     }
 
     public function testSymlinkedFileGivenByNameIsRefused(): void
