@@ -143,15 +143,15 @@ final class IsCidrTest extends TestAbstractCellRule
 
     public function testAzurePrefixColumn(): void
     {
+        $groups = [['allow_values' => ['*']]];
+        $groups[] = ['is_cidr' => true];
+        $groups[] = ['is_ip' => true];
+        $groups[] = ['azure_service_tag' => 'nsg'];
+
         $column = new Column(0, [
             'name'     => 'prefixes',
             'multiple' => ['format' => 'literal'],
-            'rules'    => ['any_of' => [
-                ['allow_values' => ['*']],
-                ['is_cidr'           => true],
-                ['is_ip'             => true],
-                ['azure_service_tag' => 'nsg'],
-            ]],
+            'rules'    => ['any_of' => $groups],
         ]);
 
         isSame(0, $column->validateCell("['*', '10.66.100.0/22', '10.0.0.1', 'Storage.UKSouth']")->count());
