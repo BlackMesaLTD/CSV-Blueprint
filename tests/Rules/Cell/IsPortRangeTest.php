@@ -70,7 +70,8 @@ final class IsPortRangeTest extends TestAbstractCellRule
         isSame(0, $column->validateCell("['22', '8000-8100', '443']")->count());
         isSame(
             '"any_of" at line 1, column "0:ports". Item 2 of 3. '
-            . 'Value "9000-80" passes none of the groups: 1) is_port; 2) is_port_range.',
+            . 'Value "9000-80" passes none of the groups: '
+            . '1) is_port: is not a valid port number; 2) is_port_range: is not a valid port range.',
             $column->validateCell("['22', '9000-80', '443']", 1)->get(0)?->toCleanString(),
         );
     }

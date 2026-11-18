@@ -47,8 +47,8 @@ final class AnyOf extends AbstractCellRule
                 return null;
             }
 
-            $ruleCodes = \array_unique(\array_map(static fn (Error $error): string => $error->getRuleCode(), $errors));
-            $failed[] = ($index + 1) . ') ' . \implode(', ', $ruleCodes);
+            $reasons = \array_map(static fn (Error $error): string => self::reason($error, $cellValue), $errors);
+            $failed[] = ($index + 1) . ') ' . \implode(', ', \array_unique($reasons));
         }
 
         return "Value \"<c>{$cellValue}</c>\" passes none of the groups: " . \implode('; ', $failed);
@@ -66,6 +66,7 @@ final class AnyOf extends AbstractCellRule
             }
 
             $this->rulesets = [];
+
             foreach ($groups as $group) {
                 if (!\is_array($group) || \count($group) === 0) {
                     throw new Exception('Every group in "any_of" must be a non-empty set of rules');
@@ -75,5 +76,19 @@ final class AnyOf extends AbstractCellRule
         }
 
         return $this->rulesets;
+    }
+
+    /**
+     * "is_cidr: is not a valid CIDR block. Use ... instead": the rule and why it failed, without repeating the value.
+     */
+    private static function reason(Error $error, string $cellValue): string
+    {
+        $message = $error->getMessage();
+        $prefix = "Value \"<c>{$cellValue}</c>\" ";
+        if (\str_starts_with($message, $prefix)) {
+            $message = \substr($message, \strlen($prefix));
+        }
+
+        return $error->getRuleCode() . ': ' . $message;
     }
 }

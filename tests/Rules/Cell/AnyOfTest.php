@@ -45,12 +45,20 @@ final class AnyOfTest extends TestAbstractCellRule
     public function testNegative(): void
     {
         $rule = $this->create([['is_ip' => true], ['is_domain' => true]]);
-        isSame('Value "not a host" passes none of the groups: 1) is_ip; 2) is_domain', $rule->test('not a host'));
+        isSame(
+            'Value "not a host" passes none of the groups: 1) is_ip: is not a valid IPv6 or IPv4; 2) is_domain: is not a valid domain',
+            $rule->test('not a host'),
+        );
 
         $rule = $this->create([['is_int' => true, 'num_min' => 10], ['exact_value' => '*']]);
-        isSame('Value "5" passes none of the groups: 1) num_min; 2) exact_value', $rule->test('5'));
         isSame(
-            'Value "1.5" passes none of the groups: 1) is_int, num_min; 2) exact_value',
+            'Value "5" passes none of the groups: '
+            . '1) num_min: The value "5" is less than the expected "10"; 2) exact_value: is not strict equal to "*"',
+            $rule->test('5'),
+        );
+        isSame(
+            'Value "1.5" passes none of the groups: 1) is_int: is not an integer, '
+            . 'num_min: The value "1.5" is less than the expected "10"; 2) exact_value: is not strict equal to "*"',
             $rule->test('1.5'),
         );
     }
@@ -80,7 +88,8 @@ final class AnyOfTest extends TestAbstractCellRule
         isSame(0, $column->validateCell("['10.0.0.1', 'example.com']")->count());
         isSame(
             '"any_of" at line 1, column "0:hosts". Item 2 of 2. '
-            . 'Value "not a host" passes none of the groups: 1) is_ip; 2) is_domain.',
+            . 'Value "not a host" passes none of the groups: '
+            . '1) is_ip: is not a valid IPv6 or IPv4; 2) is_domain: is not a valid domain.',
             $column->validateCell("['10.0.0.1', 'not a host']", 1)->get(0)?->toCleanString(),
         );
     }
