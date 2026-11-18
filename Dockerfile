@@ -67,7 +67,7 @@ COPY src ./src
 COPY schema-examples ./schema-examples
 COPY --chmod=0755 docker/entrypoint.sh ./docker/entrypoint.sh
 RUN chmod 0755 ./csv-blueprint \
-    && chmod -R a+rX /app
+    && chmod -R a+rX,go-w /app
 
 # The validator only reads its inputs. GitHub-hosted runners own the workspace as uid 1001, and checked-out files
 # are world-readable, so no root is needed.
