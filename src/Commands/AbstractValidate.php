@@ -19,6 +19,7 @@ namespace JBZoo\CsvBlueprint\Commands;
 use JBZoo\Cli\CliCommand;
 use JBZoo\CsvBlueprint\Schema;
 use JBZoo\CsvBlueprint\Utils;
+use JBZoo\CsvBlueprint\Validators\Error;
 use JBZoo\CsvBlueprint\Validators\ErrorSuite;
 use JBZoo\CsvBlueprint\Workers\WorkerPool;
 use JBZoo\Utils\Env;
@@ -140,6 +141,15 @@ abstract class AbstractValidate extends CliCommand
     {
         $patterns = $this->getOptArray($option);
         $filenames = \array_values(Utils::findFiles($patterns));
+
+        // File names reach reports and CI logs; a line break in one could forge a workflow command.
+        foreach ($filenames as $filename) {
+            if (\preg_match('/[\x00-\x1F\x7F]/', $filename->getPathname()) === 1) {
+                throw new Exception(
+                    'File name contains control characters: ' . Error::visibleControlChars($filename->getPathname()),
+                );
+            }
+        }
 
         // Hackish. Clear cache for schema files because we have aggressive opcode caching.
         if ($option === 'schema' && \function_exists('opcache_invalidate')) {

@@ -71,7 +71,7 @@ final class ErrorSuite
             return null;
         }
 
-        $suite = $this->prepareSourceSuite();
+        $suite = $this->prepareSourceSuite($mode === self::REPORT_GITHUB);
         $map = [
             self::REPORT_TEXT     => fn (): string => $this->renderPlainText(),
             self::REPORT_TABLE    => fn (): string => $this->renderTable(),
@@ -211,16 +211,29 @@ final class ErrorSuite
         return \trim($buffer->fetch());
     }
 
-    private function prepareSourceSuite(): SourceSuite
+    /**
+     * @param bool $forGithub escape values for GitHub workflow commands: the converter only turns line breaks in the
+     *                        message into "%0A", and writes the file property as-is
+     */
+    private function prepareSourceSuite(bool $forGithub = false): SourceSuite
     {
         $suite = new SourceSuite($this->getTestcaseName());
 
         foreach ($this->errors as $error) {
             $caseName = $error->getRuleCode() . ' at column ' . $error->getColumnName();
+            $errOut = $error->toCleanString();
+            $file = $this->csvFilename;
+
+            if ($forGithub) {
+                $caseName = self::githubData($caseName);
+                $errOut = self::githubData($errOut);
+                $file = $file === null ? null : self::githubProperty($file);
+            }
+
             $case = $suite->addTestCase($caseName);
             $case->line = (int)$error->getLine();
-            $case->file = $this->csvFilename;
-            $case->errOut = $error->toCleanString();
+            $case->file = $file;
+            $case->errOut = $errOut;
         }
 
         return $suite;
@@ -239,6 +252,22 @@ final class ErrorSuite
         }
 
         return FS::getRelative((string)(new \SplFileInfo($csvFilename))->getRealPath());
+    }
+
+    /**
+     * Escapes a workflow command's message. The converter adds "%0A" for line breaks afterwards.
+     */
+    private static function githubData(string $value): string
+    {
+        return \str_replace(['%', "\r"], ['%25', '%0D'], $value);
+    }
+
+    /**
+     * Escapes a workflow command property (file=...), where ":" and "," are separators.
+     */
+    private static function githubProperty(string $value): string
+    {
+        return \str_replace(['%', "\r", "\n", ':', ','], ['%25', '%0D', '%0A', '%3A', '%2C'], $value);
     }
 
     /**

@@ -26,6 +26,8 @@ final class Error
         private string $columnName = '',
         private int $line = self::UNDEFINED_LINE,
     ) {
+        $this->message = self::visibleControlChars($this->message);
+        $this->columnName = self::visibleControlChars($this->columnName);
     }
 
     /**
@@ -109,5 +111,23 @@ final class Error
             'columnName' => $this->columnName,
             'line'       => $this->line,
         ];
+    }
+
+    /**
+     * Writes control characters as visible escapes ("\n", "\x1b"). Messages quote CSV values and headers, and a
+     * raw line break followed by "::" would be read by GitHub Actions (or another CI) as a workflow command.
+     */
+    public static function visibleControlChars(string $text): string
+    {
+        return (string)\preg_replace_callback(
+            '/[\x00-\x1F\x7F]/',
+            static fn (array $match): string => match ($match[0]) {
+                "\n"    => '\n',
+                "\r"    => '\r',
+                "\t"    => '\t',
+                default => \sprintf('\x%02x', \ord($match[0])),
+            },
+            $text,
+        );
     }
 }
