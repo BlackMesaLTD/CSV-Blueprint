@@ -39,7 +39,8 @@ build-prod: ##@Project Build project in production mode
 	@make build-version
 
 build-phar-file: ##@Project Build Phar file
-	curl -L "https://github.com/box-project/box/releases/download/4.7.0/box.phar" -o ./build/box.phar
+	curl -fsSL "https://github.com/box-project/box/releases/download/4.7.0/box.phar" -o ./build/box.phar
+	echo "3d390eeaec33288098fe83f8a54c60cc575cb6be295f38ff4482b4b4f26f8d52  ./build/box.phar" | sha256sum -c -
 	@make build-version
 	@php ./build/box.phar --version
 	@php ./build/box.phar compile -vv

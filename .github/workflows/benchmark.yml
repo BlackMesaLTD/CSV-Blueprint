@@ -36,13 +36,14 @@ jobs:
       DOCKER_IMAGE: jbzoo/csv-blueprint:${{ matrix.version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
           ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: 8.4
 
@@ -52,7 +53,7 @@ jobs:
 
       - name: Build local image
         if: matrix.version == 'local'
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           push: false
@@ -60,7 +61,7 @@ jobs:
 
       - name: Pull latest image
         if: matrix.version == 'latest'
-        run: docker pull ${{ env.DOCKER_IMAGE }}
+        run: docker pull "${DOCKER_IMAGE}"
 
       - name: 🔥 Benchmark 🔥
         run: make bench-create-csv bench-docker --no-print-directory
