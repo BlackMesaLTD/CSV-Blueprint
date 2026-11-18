@@ -23,6 +23,7 @@ use JBZoo\Utils\Cli;
 use JBZoo\Utils\Env;
 use JBZoo\Utils\FS;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\Glob;
 use Symfony\Component\Finder\SplFileInfo;
 
 use function JBZoo\Cli\cli;
@@ -180,9 +181,14 @@ final class Utils
                 $finder = (new Finder())
                     ->in(\dirname($path))
                     ->depth('< ' . self::MAX_DIRECTORY_DEPTH)
-                    ->ignoreVCSIgnored(true)
-                    ->ignoreDotFiles(true)
-                    ->name(\basename($path));
+                    // Every matching file is validated: a pull request could otherwise hide a CSV from the check
+                    // by naming it ".x.csv" or listing it in .gitignore, while other tools still read it.
+                    // Version-control folders (.git, .svn, ...) are still skipped.
+                    ->ignoreVCS(true)
+                    ->ignoreVCSIgnored(false)
+                    ->ignoreDotFiles(false)
+                    // "*" matches a leading dot too, unlike a shell glob, so ".x.csv" isn't skipped either.
+                    ->name(Glob::toRegex(\basename($path), false));
 
                 foreach ($finder as $file) {
                     self::assertNoSymlinks($file->getPathname());
