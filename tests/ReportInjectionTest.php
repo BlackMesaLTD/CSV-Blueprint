@@ -32,7 +32,8 @@ final class ReportInjectionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->dir = './build/report-injection-' . \bin2hex(\random_bytes(4));
+        // Not under ./build: it's git-ignored, and Finder skips git-ignored paths.
+        $this->dir = \realpath(\sys_get_temp_dir()) . '/report-injection-' . \bin2hex(\random_bytes(4));
         \mkdir($this->dir, 0o777, true);
     }
 
