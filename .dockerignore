@@ -27,3 +27,4 @@ action.yml
 box.json.dist
 phpunit.xml.dist
 *.phar
+scripts

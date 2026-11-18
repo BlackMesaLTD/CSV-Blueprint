@@ -28,11 +28,11 @@ final class ValidatorColumnMultipleTest extends TestCase
 {
     public function testWithoutMultiple(): void
     {
-        $column = self::column(['rules' => ['is_azure_nsg_cidr' => true]]);
+        $column = self::column(['rules' => ['is_cidr' => true]]);
 
         isSame(
-            ['"is_azure_nsg_cidr" at line 5, column "0:prefixes". '
-                . "Value \"['10.0.0.0/8']\" is not a valid Azure NSG address prefix."],
+            ['"is_cidr" at line 5, column "0:prefixes". '
+                . "Value \"['10.0.0.0/8']\" is not a valid CIDR block."],
             self::errors($column, "['10.0.0.0/8']"),
         );
     }
@@ -41,14 +41,14 @@ final class ValidatorColumnMultipleTest extends TestCase
     {
         $column = self::column([
             'multiple' => ['format' => 'literal'],
-            'rules'    => ['is_azure_nsg_cidr' => true],
+            'rules'    => ['is_cidr' => true],
         ]);
 
-        isSame([], self::errors($column, "['10.0.0.0/8', 'Storage.WestEurope', '*']"));
+        isSame([], self::errors($column, "['10.0.0.0/8', '192.168.0.0/16', '2001:db8::/32']"));
         isSame(
-            ['"is_azure_nsg_cidr" at line 5, column "0:prefixes". '
-                . 'Item 2 of 3. Value "10.20.0.0/33" is not a valid Azure NSG address prefix.'],
-            self::errors($column, "['10.0.0.0/8', '10.20.0.0/33', 'Storage.WestEurope']"),
+            ['"is_cidr" at line 5, column "0:prefixes". '
+                . 'Item 2 of 3. Value "10.20.0.0/33" is not a valid CIDR block.'],
+            self::errors($column, "['10.0.0.0/8', '10.20.0.0/33', '192.168.0.0/16']"),
         );
     }
 
@@ -73,7 +73,7 @@ final class ValidatorColumnMultipleTest extends TestCase
     {
         $column = self::column([
             'multiple' => ['format' => 'literal', 'count_min' => 1, 'count_max' => 2, 'unique' => true],
-            'rules'    => ['is_azure_nsg_cidr' => true],
+            'rules'    => ['is_cidr' => true],
         ]);
 
         isSame([], self::errors($column, "['10.0.0.0/8', '10.1.0.0/16']"));
@@ -97,7 +97,7 @@ final class ValidatorColumnMultipleTest extends TestCase
     {
         $column = self::column([
             'multiple' => ['format' => 'literal', 'count_min' => 1],
-            'rules'    => ['is_azure_nsg_cidr' => true],
+            'rules'    => ['is_cidr' => true],
         ]);
 
         isSame(
@@ -111,18 +111,18 @@ final class ValidatorColumnMultipleTest extends TestCase
     {
         $column = self::column([
             'multiple' => ['format' => 'literal', 'count_min' => 1],
-            'rules'    => ['not_empty' => true, 'is_azure_nsg_cidr' => true],
+            'rules'    => ['not_empty' => true, 'is_cidr' => true],
         ]);
 
         isSame(['"not_empty" at line 5, column "0:prefixes". Value is empty.'], self::errors($column, ''));
 
         $column = self::column([
             'multiple' => ['format' => 'literal', 'count_min' => 1],
-            'rules'    => ['not_empty' => false, 'is_azure_nsg_cidr' => true],
+            'rules'    => ['not_empty' => false, 'is_cidr' => true],
         ]);
         isSame([], self::errors($column, ''));
         isSame(
-            ['"is_azure_nsg_cidr" at line 5, column "0:prefixes". Value "  " is not a valid Azure NSG address prefix.'],
+            ['"is_cidr" at line 5, column "0:prefixes". Value "  " is not a valid CIDR block.'],
             self::errors($column, '  '),
         );
         isSame(

@@ -1,0 +1,95 @@
+#
+# JBZoo Toolbox - Csv-Blueprint.
+#
+# This file is part of the JBZoo Toolbox project.
+# For the full copyright and license information, please view the LICENSE
+# file that was distributed with this source code.
+#
+# @license    MIT
+# @copyright  Copyright (C) JBZoo.com, All rights reserved.
+# @see        https://github.com/JBZoo/Csv-Blueprint
+#
+
+# Weekly refresh of src/Data from Microsoft's Service Tags file and AWS's IP ranges.
+# Changes arrive as a pull request for review; nothing is pushed to main directly.
+#
+#   refresh data ─► no change: stop
+#                └► change: push bot/cloud-data ─► open/update PR ─► run CI on it
+#
+# Pull requests opened with GITHUB_TOKEN don't trigger pull_request workflows, so the job
+# starts CI on the branch itself with workflow_dispatch (which GITHUB_TOKEN may trigger).
+
+name: Update cloud data
+
+on:
+  schedule:
+    - cron: '17 6 * * 2' # Tuesdays: Microsoft publishes the file on Mondays
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: update-cloud-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Refresh cloud data
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write      # push the bot/cloud-data branch
+      pull-requests: write # open or update the pull request
+      actions: write       # start CI on the branch
+    env:
+      BRANCH: bot/cloud-data
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+
+      - name: Refresh the data files
+        run: php scripts/update-cloud-data.php
+
+      - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- src/Data; then
+            echo "Cloud data is up to date."
+            exit 0
+          fi
+
+          changes="$(git diff -U0 -- src/Data | grep -E '^[+-] ' | head -n 200)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C "${BRANCH}"
+          git add src/Data
+          git commit -m 'chore: refresh cloud reference data'
+          auth="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)"
+          git -c "http.extraheader=AUTHORIZATION: basic ${auth}" push --force origin "${BRANCH}"
+
+          body="${RUNNER_TEMP}/pr-body.md"
+          {
+            echo "Weekly refresh from the providers' public feeds (scripts/update-cloud-data.php)."
+            echo
+            echo "Check that removals are expected before merging: a removed tag or region makes CSVs that use it fail."
+            echo
+            echo "\`\`\`diff"
+            echo "${changes}"
+            echo "\`\`\`"
+          } > "${body}"
+          if [ "$(gh pr view "${BRANCH}" --json state --jq .state 2>/dev/null)" = "OPEN" ]; then
+            gh pr edit "${BRANCH}" --body-file "${body}"
+          else
+            gh pr create --base main --head "${BRANCH}" --title 'chore: refresh cloud reference data' --body-file "${body}"
+          fi
+          gh workflow run main.yml --ref "${BRANCH}"
