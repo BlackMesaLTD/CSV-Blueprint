@@ -30,25 +30,44 @@ require_once __DIR__ . '/../src/Data/CloudData.php';
 
 const MAX_FEED_BYTES = 32 * 1024 * 1024;
 
+/**
+ * Fetches a feed URL. Redirects are followed by hand (at most 3) so every hop is checked: HTTPS to a feed host only.
+ */
 function fetch(string $url): string
 {
-    if (!\str_starts_with($url, 'https://')) {
-        throw new RuntimeException("Refusing a non-HTTPS URL: {$url}");
-    }
-
     $context = \stream_context_create([
-        'http' => ['timeout' => 60, 'follow_location' => 1, 'max_redirects' => 3, 'user_agent' => 'csv-blueprint-data-update'],
+        'http' => ['timeout' => 60, 'follow_location' => 0, 'ignore_errors' => true, 'user_agent' => 'csv-blueprint-data-update'],
         'ssl'  => ['verify_peer' => true, 'verify_peer_name' => true],
     ]);
-    $body = @\file_get_contents($url, false, $context, 0, MAX_FEED_BYTES + 1);
-    if ($body === false) {
-        throw new RuntimeException("Download failed: {$url}");
-    }
-    if (\strlen($body) > MAX_FEED_BYTES) {
-        throw new RuntimeException('Response larger than ' . MAX_FEED_BYTES . " bytes: {$url}");
+
+    for ($hop = 0; $hop <= 3; $hop++) {
+        CloudDataBuilder::checkFeedUrl($url);
+        $body = @\file_get_contents($url, false, $context, 0, MAX_FEED_BYTES + 1);
+        $headers = \http_get_last_response_headers() ?? [];
+        $status = (int)(\explode(' ', (string)($headers[0] ?? ''))[1] ?? 0);
+
+        if ($status >= 300 && $status < 400) {
+            $location = '';
+            foreach ($headers as $header) {
+                if (\stripos($header, 'location:') === 0) {
+                    $location = \substr($header, \strlen('location:'));
+                }
+            }
+            $url = CloudDataBuilder::redirectTarget($location, $url);
+            continue;
+        }
+
+        if ($status !== 200 || $body === false) {
+            throw new RuntimeException("Download failed (HTTP {$status}): {$url}");
+        }
+        if (\strlen($body) > MAX_FEED_BYTES) {
+            throw new RuntimeException('Response larger than ' . MAX_FEED_BYTES . " bytes: {$url}");
+        }
+
+        return $body;
     }
 
-    return $body;
+    throw new RuntimeException("Too many redirects: {$url}");
 }
 
 function decode(string $json): array
