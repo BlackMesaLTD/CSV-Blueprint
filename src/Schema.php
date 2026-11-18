@@ -32,9 +32,18 @@ final class Schema
     /** Allows top-level PHP schemas when set to "1" (see --allow-php-schemas). PHP presets are never loaded. */
     public const ENV_ALLOW_PHP = 'CSV_BLUEPRINT_ALLOW_PHP_SCHEMAS';
 
+    /** Largest schema file read, in bytes. */
+    public const MAX_FILE_SIZE = 1024 * 1024;
+
+    /** Deepest chain of presets (a schema whose preset has a preset ...). */
+    public const MAX_PRESET_DEPTH = 16;
+
     public const ENCODING_UTF8 = 'utf-8';
     public const ENCODING_UTF16 = 'utf-16';
     public const ENCODING_UTF32 = 'utf-32';
+
+    /** @var string[] real paths of the schema files being loaded, outermost first */
+    private static array $loading = [];
 
     /** @var Column[] */
     private array        $columns;
@@ -56,31 +65,7 @@ final class Schema
             && \file_exists($csvSchemaFilenameOrArray)
         ) {
             $this->filename = $csvSchemaFilenameOrArray;
-            $fileExtension = \pathinfo($csvSchemaFilenameOrArray, \PATHINFO_EXTENSION);
-
-            if ($fileExtension === 'yml' || $fileExtension === 'yaml') {
-                $parsed = Yaml::parse((string)\file_get_contents($csvSchemaFilenameOrArray));
-                if ($parsed !== null && !\is_array($parsed)) {
-                    throw new Exception("Schema must be a YAML mapping: {$csvSchemaFilenameOrArray}");
-                }
-
-                $data = yml((array)$parsed);
-            } elseif ($fileExtension === 'json') {
-                $data = json($csvSchemaFilenameOrArray);
-            } elseif ($fileExtension === 'php') {
-                // A PHP schema is executed, not parsed: only ever load one the operator chose to trust.
-                if ($isPreset) {
-                    throw new Exception("PHP schemas can't be used as presets: {$csvSchemaFilenameOrArray}");
-                }
-                if (!self::phpSchemasAllowed()) {
-                    throw new Exception(
-                        "PHP schemas are disabled. Use --allow-php-schemas to load: {$csvSchemaFilenameOrArray}",
-                    );
-                }
-                $data = phpArray($csvSchemaFilenameOrArray);
-            } else {
-                throw new Exception("Unsupported file extension: {$fileExtension}");
-            }
+            $data = self::loadFile($csvSchemaFilenameOrArray, $isPreset);
         } elseif (\is_string($csvSchemaFilenameOrArray)) {
             throw new Exception("Invalid schema data: {$csvSchemaFilenameOrArray}");
         } else {
@@ -95,12 +80,22 @@ final class Schema
             $basepath = \dirname($filename);
         }
 
+        // Presets are loaded while the data is prepared; track this file so a preset can't include it again.
+        $tracked = $filename !== '' && $this->filename !== '_custom_array_';
+        if ($tracked) {
+            self::$loading[] = (string)$this->filename;
+        }
+
         try {
             $this->internalState = (new SchemaDataPrep($data, $basepath))->buildData();
         } catch (\Exception $e) {
             throw new Exception(
                 "Invalid schema \"{$this->getFilename(true)}\" data.\nUnexpected error: \"{$e->getMessage()}\"",
             );
+        } finally {
+            if ($tracked) {
+                \array_pop(self::$loading);
+            }
         }
 
         $this->columns = $this->prepareColumns();
@@ -428,6 +423,66 @@ final class Schema
         }
 
         return $result;
+    }
+
+    private static function loadFile(string $filename, bool $isPreset): AbstractData
+    {
+        self::checkLoadable($filename);
+        $fileExtension = \pathinfo($filename, \PATHINFO_EXTENSION);
+
+        if ($fileExtension === 'yml' || $fileExtension === 'yaml') {
+            $parsed = Yaml::parse((string)\file_get_contents($filename));
+            if ($parsed !== null && !\is_array($parsed)) {
+                throw new Exception("Schema must be a YAML mapping: {$filename}");
+            }
+
+            return yml((array)$parsed);
+        }
+
+        if ($fileExtension === 'json') {
+            return json($filename);
+        }
+
+        if ($fileExtension === 'php') {
+            // A PHP schema is executed, not parsed: only ever load one the operator chose to trust.
+            if ($isPreset) {
+                throw new Exception("PHP schemas can't be used as presets: {$filename}");
+            }
+
+            if (!self::phpSchemasAllowed()) {
+                throw new Exception("PHP schemas are disabled. Use --allow-php-schemas to load: {$filename}");
+            }
+
+            return phpArray($filename);
+        }
+
+        throw new Exception("Unsupported file extension: {$fileExtension}");
+    }
+
+    /**
+     * Refuses a schema file that is too large, is already being loaded (a preset cycle), or is nested too deeply.
+     */
+    private static function checkLoadable(string $filename): void
+    {
+        $size = (int)\filesize($filename);
+        if ($size > self::MAX_FILE_SIZE) {
+            throw new Exception(
+                "Schema file is {$size} bytes, more than the limit of " . self::MAX_FILE_SIZE . ": {$filename}",
+            );
+        }
+
+        $realPath = (string)\realpath($filename);
+        if (\in_array($realPath, self::$loading, true)) {
+            $chain = \array_map(
+                static fn (string $path): string => Utils::cutPath($path),
+                [...self::$loading, $realPath],
+            );
+            throw new Exception('Presets include each other: ' . \implode(' -> ', $chain));
+        }
+
+        if (\count(self::$loading) >= self::MAX_PRESET_DEPTH) {
+            throw new Exception('Presets are nested more than ' . self::MAX_PRESET_DEPTH . " levels deep: {$filename}");
+        }
     }
 
     private static function getDefaultValues(int $numberOfColumns = 0): array
