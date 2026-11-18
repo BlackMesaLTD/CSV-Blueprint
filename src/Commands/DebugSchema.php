@@ -58,7 +58,11 @@ final class DebugSchema extends CliCommand
             throw new Exception("Schema file not found: {$schemaFilename}");
         }
 
-        $this->_((new Schema($schemaFilename))->dumpAsYamlString($this->getOptBool('hide-defaults'), $decorated));
+        $this->_((new Schema($schemaFilename))->dumpAsYamlString(
+            $this->getOptBool('hide-defaults'),
+            $decorated,
+            multiLineBlocks: false,
+        ));
 
         return self::SUCCESS;
     }

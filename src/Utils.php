@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace JBZoo\CsvBlueprint;
 
 use JBZoo\CsvBlueprint\Rules\AbstractRule;
+use JBZoo\CsvBlueprint\Validators\Error;
 use JBZoo\CsvBlueprint\Validators\ValidatorSchema;
 use JBZoo\CsvBlueprint\Workers\WorkerPool;
 use JBZoo\Utils\Cli;
@@ -185,6 +186,7 @@ final class Utils
                     ->name(\basename($path));
 
                 foreach ($finder as $file) {
+                    self::assertPlainFileName($file->getPathname());
                     self::assertNoSymlinks($file->getPathname());
                     if (!$file->isReadable()) {
                         throw new Exception("File is not readable: {$file->getPathname()}");
@@ -193,6 +195,7 @@ final class Utils
                     $fileList[$file->getPathname()] = $file;
                 }
             } elseif (\file_exists($path) || \is_link($path)) {
+                self::assertPlainFileName($path);
                 self::assertNoSymlinks($path);
                 $fileList[$path] = new SplFileInfo($path, '', $path);
             }
@@ -225,6 +228,17 @@ final class Utils
         $reason = self::walkInsideRoot($root, \substr($absolute, \strlen($root)));
 
         return $reason === '' ? [$absolute, ''] : [null, $reason];
+    }
+
+    /**
+     * Refuses a file name with control characters before anything quotes it: a line break followed by "::" in a
+     * file name, printed in an error or a report, would be read by GitHub Actions as a workflow command.
+     */
+    public static function assertPlainFileName(string $path): void
+    {
+        if (\preg_match('/[\x00-\x1F\x7F]/', $path) === 1) {
+            throw new Exception('File name contains control characters: ' . Error::visibleControlChars($path));
+        }
     }
 
     /**
@@ -717,7 +731,7 @@ final class Utils
                 \E_NOTICE, \E_USER_NOTICE                                        => 'Notice',
                 default                                                          => 'Unknown',
             };
-            throw new Exception("Unexpected {$severity}: \"{$message}\" in file\n{$file}:{$line}");
+            throw new Exception("Unexpected {$severity}: \"{$message}\" in file {$file}:{$line}");
         });
     }
 
