@@ -12,17 +12,16 @@
 
 # Every input is pinned: base images by digest, the extension installer by release and checksum, Composer by image
 # digest. Composer, git and the build context stay in the build stages; the final image gets the app and vendor only.
+# Images are pinned on literal FROM lines (one per image) so Dependabot can keep the digests current.
 
-ARG ALPINE_IMAGE=alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
+FROM composer:2.11.1@sha256:8de2184c6de224f4689e8f80ed5f5edaf0030b6b8b7839a22a2bcb6722ac87d0 AS composer
+
 # ZTS is required for ext-parallel (multi-threaded validation).
-ARG PHP_IMAGE=php:8.5-zts-alpine@sha256:be4b957d7592ae323d1a42a37beb1ef54418d8268b7e61b1d32be47126707e2e
-ARG COMPOSER_IMAGE=composer:2.11.1@sha256:8de2184c6de224f4689e8f80ed5f5edaf0030b6b8b7839a22a2bcb6722ac87d0
-
-FROM ${COMPOSER_IMAGE} AS composer
+FROM php:8.5-zts-alpine@sha256:be4b957d7592ae323d1a42a37beb1ef54418d8268b7e61b1d32be47126707e2e AS php-base
 
 ########################################################################################
 # Version stamp. This stage sees .git; nothing from it reaches the final image except .version.
-FROM ${ALPINE_IMAGE} AS preparatory
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS preparatory
 # Set by the release workflow, which builds the image before the version's tag exists.
 ARG VERSION=""
 RUN apk add --no-cache make git
@@ -37,7 +36,7 @@ RUN if [ -n "${VERSION}" ]; then \
 
 ########################################################################################
 # Production dependencies, installed by Composer from composer.lock.
-FROM ${PHP_IMAGE} AS vendor
+FROM php-base AS vendor
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 WORKDIR /app
 COPY composer.json composer.lock ./
@@ -47,7 +46,7 @@ RUN composer install --no-dev --classmap-authoritative --no-progress --no-intera
     && composer check-platform-reqs --no-dev
 
 ########################################################################################
-FROM ${PHP_IMAGE}
+FROM php-base
 
 # ext-parallel is pinned to 1.2.15 (verified stable with opcache on 8.5 ZTS); bump it deliberately.
 ADD --chmod=0755 \
