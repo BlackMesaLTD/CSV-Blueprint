@@ -40,6 +40,7 @@ jobs:
   test-current-versions:
     name: Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       matrix:
         php-version: [ 8.4, 8.5 ]
@@ -73,6 +74,7 @@ jobs:
   test-latest-libs:
     name: Tests - Latest
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       matrix:
         php-version: [ 8.4, 8.5 ]
@@ -109,6 +111,7 @@ jobs:
   markdown-lint:
     name: Markdown Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -125,6 +128,7 @@ jobs:
   verify-php-binary:
     name: Verify PHP binary
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       matrix:
         php-version: [ 8.4, 8.5 ]
@@ -173,6 +177,7 @@ jobs:
   verify-phar-binary:
     name: Verify Phar
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       matrix:
         php-version: [ 8.4, 8.5 ]
@@ -215,6 +220,7 @@ jobs:
   verify-docker:
     name: Verify Docker
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       BENCH_COLS: 1
     steps:
@@ -267,18 +273,11 @@ jobs:
         run: |
           ! make bench-docker-quick-parallel --no-print-directory
 
-      - name: Push Docker Image (master)
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        if: github.ref == 'refs/heads/master'
-        with:
-          context: .
-          push: true
-          tags: jbzoo/csv-blueprint:master
-
 
   verify-ga:
     name: Verify GitHub Actions
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -304,6 +303,7 @@ jobs:
   reports:
     name: Reports
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
