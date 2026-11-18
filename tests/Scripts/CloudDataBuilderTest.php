@@ -45,6 +45,43 @@ final class CloudDataBuilderTest extends TestCase
         );
     }
 
+    public function testFeedUrlsMustBeHttpsToAFeedHost(): void
+    {
+        CloudDataBuilder::checkFeedUrl(CloudDataBuilder::AZURE_PAGE);
+        CloudDataBuilder::checkFeedUrl(CloudDataBuilder::AWS_URL);
+        CloudDataBuilder::checkFeedUrl('https://download.microsoft.com/download/7/1/d/x/ServiceTags_Public_20261116.json');
+
+        $refused = [
+            'http://ip-ranges.amazonaws.com/ip-ranges.json',
+            'https://evil.example/ip-ranges.json',
+            'https://download.microsoft.com.evil.example/x.json',
+            'https://user:pass@ip-ranges.amazonaws.com/ip-ranges.json',
+            'https://ip-ranges.amazonaws.com:8443/ip-ranges.json',
+            '//ip-ranges.amazonaws.com/ip-ranges.json',
+            'ftp://download.microsoft.com/x.json',
+            'file:///etc/passwd',
+            '',
+        ];
+
+        foreach ($refused as $url) {
+            try {
+                CloudDataBuilder::checkFeedUrl($url);
+                self::fail("Expected {$url} to be refused");
+            } catch (\RuntimeException $e) {
+                isTrue(\str_contains($e->getMessage(), 'Refusing to fetch'), $url);
+            }
+        }
+    }
+
+    public function testRedirectTargets(): void
+    {
+        $from = 'https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519';
+
+        isSame('https://www.microsoft.com/download/x', CloudDataBuilder::redirectTarget(' /download/x ', $from));
+        isSame('http://www.microsoft.com/x', CloudDataBuilder::redirectTarget('http://www.microsoft.com/x', $from));
+        isSame('//evil.example/x', CloudDataBuilder::redirectTarget('//evil.example/x', $from), 'checked, then refused');
+    }
+
     public function testBuildAzure(): void
     {
         $data = CloudDataBuilder::buildAzure(self::azureFeed());

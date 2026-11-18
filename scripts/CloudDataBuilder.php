@@ -26,6 +26,9 @@ final class CloudDataBuilder
     public const AZURE_PAGE = 'https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519';
     public const AWS_URL = 'https://ip-ranges.amazonaws.com/ip-ranges.json';
 
+    /** The only hosts the feeds are fetched from, including after a redirect. */
+    public const FEED_HOSTS = ['download.microsoft.com', 'ip-ranges.amazonaws.com', 'www.microsoft.com'];
+
     /** Tags NSGs accept that aren't in the feed: Azure resolves their addresses itself. */
     public const AZURE_VIRTUAL_TAGS = ['AzureLoadBalancer', 'Internet', 'VirtualNetwork'];
 
@@ -36,6 +39,40 @@ final class CloudDataBuilder
     private const MIN_AZURE_TAGS = 1000;
     private const MIN_AWS_REGIONS = 20;
     private const MAX_SHRINK = 0.1;
+
+    /**
+     * Refuses a URL that isn't HTTPS to one of the feed hosts. Applied to every hop of a redirect, so a redirect
+     * can't move a fetch to plain HTTP or to another host.
+     */
+    public static function checkFeedUrl(string $url): void
+    {
+        $parts = \parse_url($url);
+        if (
+            !\is_array($parts)
+            || ($parts['scheme'] ?? '') !== 'https'
+            || !\in_array($parts['host'] ?? '', self::FEED_HOSTS, true)
+            || isset($parts['user'])
+            || isset($parts['port'])
+        ) {
+            throw new \RuntimeException("Refusing to fetch {$url}: only https:// on " . \implode(', ', self::FEED_HOSTS));
+        }
+    }
+
+    /**
+     * Where a redirect's Location header points, as an absolute URL. A path is resolved against the current URL's
+     * host; anything else must be an absolute URL (and is then checked like any other).
+     */
+    public static function redirectTarget(string $location, string $from): string
+    {
+        $location = \trim($location);
+        if (\str_starts_with($location, '/') && !\str_starts_with($location, '//')) {
+            $parts = (array)\parse_url($from);
+
+            return 'https://' . ($parts['host'] ?? '') . $location;
+        }
+
+        return $location;
+    }
 
     /**
      * The download link for this week's ServiceTags_Public file, from Microsoft's download page.
