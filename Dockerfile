@@ -23,10 +23,17 @@ FROM ${COMPOSER_IMAGE} AS composer
 ########################################################################################
 # Version stamp. This stage sees .git; nothing from it reaches the final image except .version.
 FROM ${ALPINE_IMAGE} AS preparatory
+# Set by the release workflow, which builds the image before the version's tag exists.
+ARG VERSION=""
 RUN apk add --no-cache make git
 WORKDIR /tmp
 COPY . /tmp
-RUN make build-version
+RUN if [ -n "${VERSION}" ]; then \
+        printf '%s | true | main | %s | %s\n' "${VERSION}" "$(git log -1 --format=%cI)" "$(git rev-parse --short HEAD)" \
+            > .version; \
+    else \
+        make build-version; \
+    fi
 
 ########################################################################################
 # Production dependencies, installed by Composer from composer.lock.
