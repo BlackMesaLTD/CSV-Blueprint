@@ -71,10 +71,6 @@ jobs:
             echo "::error::Tag ${VERSION} already exists"
             exit 1
           fi
-          if docker buildx imagetools inspect "${IMAGE}:${VERSION}" >/dev/null 2>&1; then
-            echo "::error::${IMAGE}:${VERSION} already exists. Image tags are never overwritten; release a new version."
-            exit 1
-          fi
           echo "commit=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
 
       - name: Set up QEMU
@@ -89,6 +85,20 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      # After login, so an auth problem can't look like "no such image". Only "not found" lets the release go on:
+      # any other error (network, rate limit, permissions) stops it instead of risking an overwrite.
+      - name: Check the image tag is new
+        run: |
+          if result="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>&1)"; then
+            echo "::error::${IMAGE}:${VERSION} already exists. Image tags are never overwritten; release a new version."
+            exit 1
+          fi
+          if ! grep -qE ': not found$' <<< "${result}"; then
+            echo "${result}"
+            echo "::error::Could not check whether ${IMAGE}:${VERSION} exists"
+            exit 1
+          fi
 
       - name: Build and push
         id: build
@@ -115,6 +125,22 @@ jobs:
           docker logout ghcr.io
           docker run --rm "${IMAGE}@${DIGEST}" -V | tee version.txt
           grep -qF "v${VERSION}" version.txt
+
+      # Run the image the way the runner runs the action (workspace mounted, as the image's non-root user) before
+      # anything points at it: valid fixtures must pass and invalid ones must fail.
+      - name: Run the image as the action does
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          validate() {
+            docker run --rm --workdir /github/workspace -v "${GITHUB_WORKSPACE}:/github/workspace" \
+              "${IMAGE}@${DIGEST}" validate:csv --csv='./tests/fixtures/batch/*.csv' --report=github "$@"
+          }
+          validate --schema=./tests/schemas/demo_valid.yml
+          if validate --schema='./tests/schemas/demo_*.yml'; then
+            echo "::error::Invalid fixtures passed validation"
+            exit 1
+          fi
 
   release:
     name: Pin the action and draft the release
