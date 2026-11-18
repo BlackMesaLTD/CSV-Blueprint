@@ -204,6 +204,30 @@ final class Utils
     }
 
     /**
+     * Resolves a path that comes from data (a CSV cell) to an absolute path inside the working directory.
+     * Nothing outside the working directory is touched, and every path outside it gets the same answer whether
+     * or not it exists, so rules that check paths can't be used to probe the rest of the runner's filesystem.
+     * @return array{0: null|string, 1: string} the absolute path, or null and the reason it can't be used
+     */
+    public static function resolveDataPath(string $path): array
+    {
+        // Two or more letters before ":" is a URL scheme or stream wrapper (phar:, data:, file:); "C:" is a drive.
+        if ($path === '' || \str_contains($path, "\0") || \preg_match('/^[a-z][a-z\d+.-]+:/i', $path) === 1) {
+            return [null, 'is not a plain file path'];
+        }
+
+        $root = (string)\realpath((string)\getcwd());
+        $absolute = \str_starts_with($path, '/') ? $path : "{$root}/{$path}";
+        if ($absolute !== $root && !\str_starts_with($absolute, "{$root}/")) {
+            return [null, 'is outside the working directory'];
+        }
+
+        $reason = self::walkInsideRoot($root, \substr($absolute, \strlen($root)));
+
+        return $reason === '' ? [$absolute, ''] : [null, $reason];
+    }
+
+    /**
      * Refuses a path that is, or passes through, a symlink: a link committed to a repository could point a CSV or a
      * schema at any file on the runner (whose contents then appear in error messages), or hide data from validation.
      * Inside the working directory every component is checked; elsewhere, every component from the filesystem root.
@@ -806,6 +830,34 @@ final class Utils
         }
 
         return $notEmptyArray;
+    }
+
+    /**
+     * Walks the components as written. ".." may not climb above the root, and no component may be a symlink
+     * (checked before any ".." after it), so the kernel resolves the path to where this walk ends.
+     * @return string why the path can't be used, or "" if it can
+     */
+    private static function walkInsideRoot(string $root, string $relative): string
+    {
+        $depth = 0;
+        $current = $root;
+        foreach (\explode('/', $relative) as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+
+            $depth += $part === '..' ? -1 : 1;
+            if ($depth < 0) {
+                return 'is outside the working directory';
+            }
+
+            $current .= "/{$part}";
+            if ($part !== '..' && \is_link($current)) {
+                return 'passes through a symlink';
+            }
+        }
+
+        return '';
     }
 
     /**
