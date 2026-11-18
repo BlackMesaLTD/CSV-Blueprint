@@ -90,7 +90,7 @@ final class Schema
             $this->internalState = (new SchemaDataPrep($data, $basepath))->buildData();
         } catch (\Exception $e) {
             throw new Exception(
-                "Invalid schema \"{$this->getFilename(true)}\" data.\nUnexpected error: \"{$e->getMessage()}\"",
+                "Invalid schema \"{$this->getFilename(true)}\" data. Unexpected error: \"{$e->getMessage()}\"",
             );
         } finally {
             if ($tracked) {
@@ -347,12 +347,16 @@ final class Schema
      * @param  bool        $removeDefaultValues whether to remove default values from the dumped data
      * @param  bool        $cliColored          whether to add color formatting for CLI output
      * @param  null|string $basedOnCsv          the CSV file name that the data is based on
+     * @param  bool        $multiLineBlocks     write multi-line strings as "|" blocks. Pass false when dumping a
+     *                                          schema from untrusted input to a CI log: every line of a block is
+     *                                          printed as-is, so a line could start with "::" (a workflow command)
      * @return string      the data converted to YAML string
      */
     public function dumpAsYamlString(
         bool $removeDefaultValues = true,
         bool $cliColored = false,
         ?string $basedOnCsv = null,
+        bool $multiLineBlocks = true,
     ): string {
         $dump = $this->getData()->getArrayCopy();
         if ($removeDefaultValues) {
@@ -367,7 +371,7 @@ final class Schema
             2,
             Yaml::DUMP_NULL_AS_TILDE
             | Yaml::DUMP_NUMERIC_KEY_AS_STRING
-            | Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK
+            | ($multiLineBlocks ? Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK : 0)
             | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE
             | Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE,
         );

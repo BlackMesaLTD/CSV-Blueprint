@@ -152,15 +152,6 @@ abstract class AbstractValidate extends CliCommand
         $patterns = $this->getOptArray($option);
         $filenames = \array_values(Utils::findFiles($patterns));
 
-        // File names reach reports and CI logs; a line break in one could forge a workflow command.
-        foreach ($filenames as $filename) {
-            if (\preg_match('/[\x00-\x1F\x7F]/', $filename->getPathname()) === 1) {
-                throw new Exception(
-                    'File name contains control characters: ' . Error::visibleControlChars($filename->getPathname()),
-                );
-            }
-        }
-
         // Hackish. Clear cache for schema files because we have aggressive opcode caching.
         if ($option === 'schema' && \function_exists('opcache_invalidate')) {
             foreach ($filenames as $filename) {
@@ -221,9 +212,13 @@ abstract class AbstractValidate extends CliCommand
 
             try {
                 $schema = new Schema($schemaFilename);
-                $dump = $schema->dumpAsYamlString(false, $this->outputMode->getOutput()->isDecorated());
+                $dump = $schema->dumpAsYamlString(
+                    false,
+                    $this->outputMode->getOutput()->isDecorated(),
+                    multiLineBlocks: false,
+                );
             } catch (\Throwable $exception) {
-                $dump = 'Unable to parse schema file: ' . $exception->getMessage();
+                $dump = 'Unable to parse schema file: ' . Error::visibleControlChars($exception->getMessage());
             }
 
             $this->_("# File: <blue>{$filename}</blue>");

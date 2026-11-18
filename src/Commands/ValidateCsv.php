@@ -18,6 +18,7 @@ namespace JBZoo\CsvBlueprint\Commands;
 
 use JBZoo\CsvBlueprint\Schema;
 use JBZoo\CsvBlueprint\Utils;
+use JBZoo\CsvBlueprint\Validators\Error;
 use JBZoo\CsvBlueprint\Validators\ErrorSuite;
 use JBZoo\CsvBlueprint\Workers\Tasks\ValidationCsvTask;
 use JBZoo\CsvBlueprint\Workers\WorkerPool;
@@ -184,7 +185,7 @@ final class ValidateCsv extends AbstractValidate
                 } catch (Exception $e) {
                     $this->out([
                         "{$prefix}Schema: {$schemaPath}",
-                        "{$prefix}Exception: <yellow>{$e->getMessage()}</yellow>",
+                        "{$prefix}Exception: <yellow>" . Error::visibleControlChars($e->getMessage()) . '</yellow>',
                     ], 2);
                 }
                 $this->printDumpOfSchema($schemaFilename->getPathname());
