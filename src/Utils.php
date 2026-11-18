@@ -182,17 +182,18 @@ final class Utils
                     ->depth('< ' . self::MAX_DIRECTORY_DEPTH)
                     ->ignoreVCSIgnored(true)
                     ->ignoreDotFiles(true)
-                    ->followLinks()
                     ->name(\basename($path));
 
                 foreach ($finder as $file) {
+                    self::assertNoSymlinks($file->getPathname());
                     if (!$file->isReadable()) {
                         throw new Exception("File is not readable: {$file->getPathname()}");
                     }
 
                     $fileList[$file->getPathname()] = $file;
                 }
-            } elseif (\file_exists($path)) {
+            } elseif (\file_exists($path) || \is_link($path)) {
+                self::assertNoSymlinks($path);
                 $fileList[$path] = new SplFileInfo($path, '', $path);
             }
         }
@@ -200,6 +201,31 @@ final class Utils
         \ksort($fileList, \SORT_NATURAL);
 
         return $fileList;
+    }
+
+    /**
+     * Refuses a path that is, or passes through, a symlink: a link committed to a repository could point a CSV or a
+     * schema at any file on the runner (whose contents then appear in error messages), or hide data from validation.
+     * Inside the working directory every component is checked; elsewhere, every component from the filesystem root.
+     * Components are checked as written: ".." is not resolved first, because the kernel follows a link before "..".
+     */
+    public static function assertNoSymlinks(string $path): void
+    {
+        $root = (string)\realpath((string)\getcwd());
+        $absolute = \str_starts_with($path, '/') ? $path : "{$root}/{$path}";
+        $current = \str_starts_with($absolute, "{$root}/") ? $root : '';
+        $relative = $current === '' ? $absolute : \substr($absolute, \strlen($root));
+
+        foreach (\explode('/', $relative) as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+
+            $current .= "/{$part}";
+            if (\is_link($current)) {
+                throw new Exception('Symlinks are not followed: ' . self::cutPath($current));
+            }
+        }
     }
 
     /**
