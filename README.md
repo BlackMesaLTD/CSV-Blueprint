@@ -137,7 +137,7 @@ You can find launch examples in the [workflow demo](https://github.com/JBZoo/Csv
 
 <!-- auto-update:github-actions-yml -->
 ```yml
-- uses: jbzoo/csv-blueprint@master # See the specific version on releases page. `@master` is latest.
+- uses: BlackMesaLTD/CSV-Blueprint@<release commit SHA> # <version>. Pin a release commit; see SECURITY.md.
   with:
     # Specify the path(s) to the CSV files you want to validate.
     #   This can include a direct path to a file or a directory to search with a maximum depth of 10 levels.
