@@ -139,7 +139,7 @@ final class SchemaDataPrep
             if (\is_array($includedPathOrArray)) {
                 $presets[$alias] = new Schema($includedPathOrArray, true);
             } else {
-                $presets[$alias] = new Schema($this->resolvePresetPath((string)$includedPathOrArray), true);
+                $presets[$alias] = Schema::loadPreset($this->resolvePresetPath((string)$includedPathOrArray));
             }
         }
 
