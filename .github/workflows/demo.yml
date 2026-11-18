@@ -14,18 +14,12 @@ name: Demo
 permissions:
   contents: read
 
+# Demonstrates this repository's own action and image. The release image exists before the release is published
+# (see release.yml), so the demo can run on publish.
 on:
   release:
-    types: [ created ]
+    types: [ published ]
   workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch Name'
-        required: false
-  workflow_run:
-    workflows: [ "Publish" ]
-    types:
-      - completed
 
 env:
   CSV_FILES: './tests/fixtures/batch/*.csv'
@@ -39,23 +33,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: 👍 Valid CSV files
-        uses: jbzoo/csv-blueprint@master
+        uses: ./
         with:
           csv: ${{ env.CSV_FILES }}
           schema: ${{ env.VALID_SCHEMA }}
 
       - name: 👎 Invalid CSV files - Default (Table)
-        uses: jbzoo/csv-blueprint@master
+        uses: ./
         with:
           csv: ${{ env.CSV_FILES }}
           schema: ${{ env.INVALID_SCHEMA }}
         continue-on-error: true
 
       - name: Invalid CSV files - Text
-        uses: jbzoo/csv-blueprint@master
+        uses: ./
         with:
           csv: ${{ env.CSV_FILES }}
           schema: ${{ env.INVALID_SCHEMA }}
@@ -63,7 +59,7 @@ jobs:
         continue-on-error: true
 
       - name: Invalid CSV files - GitHub Annotations
-        uses: jbzoo/csv-blueprint@master
+        uses: ./
         with:
           csv: ${{ env.CSV_FILES }}
           schema: ${{ env.INVALID_SCHEMA }}
@@ -71,7 +67,7 @@ jobs:
         continue-on-error: true
 
       - name: Invalid CSV files - TeamCity
-        uses: jbzoo/csv-blueprint@master
+        uses: ./
         with:
           csv: ${{ env.CSV_FILES }}
           schema: ${{ env.INVALID_SCHEMA }}
@@ -79,7 +75,7 @@ jobs:
         continue-on-error: true
 
       - name: Invalid CSV files - Gitlab
-        uses: jbzoo/csv-blueprint@master
+        uses: ./
         with:
           csv: ${{ env.CSV_FILES }}
           schema: ${{ env.INVALID_SCHEMA }}
@@ -87,7 +83,7 @@ jobs:
         continue-on-error: true
 
       - name: Invalid CSV files - JUnit
-        uses: jbzoo/csv-blueprint@master
+        uses: ./
         with:
           csv: ${{ env.CSV_FILES }}
           schema: ${{ env.INVALID_SCHEMA }}
@@ -100,13 +96,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Docker pull
-        run: docker pull jbzoo/csv-blueprint:latest
+      - name: Docker pull the action's image
+        run: |
+          image="$(sed -nE "s#^  image: 'docker://(.+)'\$#\1#p" action.yml)"
+          docker pull "${image}"
+          echo "IMAGE=${image}" >> "${GITHUB_ENV}"
 
       - name: 👍 Create schema based on `demo.csv`
-        run: docker run --rm --workdir=/files -v .:/files jbzoo/csv-blueprint:latest create-schema -c ./tests/fixtures/demo.csv --check-syntax --ansi
+        run: docker run --rm --workdir=/files -v .:/files "${IMAGE}" create-schema -c ./tests/fixtures/demo.csv --check-syntax --ansi
 
 
   debug-schema:
@@ -114,10 +115,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Docker pull
-        run: docker pull jbzoo/csv-blueprint:latest
+      - name: Docker pull the action's image
+        run: |
+          image="$(sed -nE "s#^  image: 'docker://(.+)'\$#\1#p" action.yml)"
+          docker pull "${image}"
+          echo "IMAGE=${image}" >> "${GITHUB_ENV}"
 
       - name: 👍 Debug schema with presets `preset_usage.yml`
-        run: docker run --rm --workdir=/files -v .:/files jbzoo/csv-blueprint:latest debug-schema -s ./schema-examples/preset_usage.yml --ansi
+        run: docker run --rm --workdir=/files -v .:/files "${IMAGE}" debug-schema -s ./schema-examples/preset_usage.yml --ansi
