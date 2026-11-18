@@ -57,6 +57,15 @@ abstract class AbstractValidate extends CliCommand
                 'Dumps the schema of the CSV file if you want to see the final schema after inheritance.',
             )
             ->addOption(
+                'allow-php-schemas',
+                null,
+                InputOption::VALUE_NONE,
+                \implode("\n", [
+                    'Allows top-level schemas written in PHP. A PHP schema is executed,',
+                    'so only use it for files you trust. Presets are never loaded from PHP files.',
+                ]),
+            )
+            ->addOption(
                 'debug',
                 null,
                 InputOption::VALUE_NONE,
@@ -103,6 +112,7 @@ abstract class AbstractValidate extends CliCommand
         }
 
         Utils::setDebugMode($this->getOptBool('debug'));
+        \putenv(Schema::ENV_ALLOW_PHP . ($this->getOptBool('allow-php-schemas') ? '=1' : ''));
     }
 
     protected function isHumanReadableMode(): bool

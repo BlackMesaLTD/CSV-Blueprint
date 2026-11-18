@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace JBZoo\PHPUnit\Validators;
 
 use JBZoo\CsvBlueprint\Csv\CsvFile;
+use JBZoo\CsvBlueprint\Schema;
 use JBZoo\PHPUnit\TestCase;
 use JBZoo\PHPUnit\Tools;
 
@@ -56,11 +57,17 @@ final class CsvValidatorTest extends TestCase
 
     public function testSchemaAsPhpFile(): void
     {
-        $csv = new CsvFile(Tools::CSV_SIMPLE_HEADER, Tools::SCHEMA_SIMPLE_HEADER_PHP);
-        isSame(
-            '"num_min" at line 2, column "0:seq". The value "1" is less than the expected "2".' . "\n",
-            \strip_tags((string)$csv->validate()),
-        );
+        \putenv(Schema::ENV_ALLOW_PHP . '=1');
+
+        try {
+            $csv = new CsvFile(Tools::CSV_SIMPLE_HEADER, Tools::SCHEMA_SIMPLE_HEADER_PHP);
+            isSame(
+                '"num_min" at line 2, column "0:seq". The value "1" is less than the expected "2".' . "\n",
+                \strip_tags((string)$csv->validate()),
+            );
+        } finally {
+            \putenv(Schema::ENV_ALLOW_PHP);
+        }
     }
 
     public function testSchemaAsJsonFile(): void

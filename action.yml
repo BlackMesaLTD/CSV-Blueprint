@@ -27,7 +27,7 @@ inputs:
     required: true
   schema:
     description: |
-      Specify the path(s) to the schema file(s), supporting YAML, JSON, or PHP formats.
+      Specify the path(s) to the schema file(s), supporting YAML or JSON formats (PHP schemas are disabled in the action).
         Similar to CSV paths, you can direct to specific files or search directories with glob patterns.
         Examples: p/file.yml; p/*.yml; p/**/*.yml; p/**/name-*.yml; **/*.yml
     required: true

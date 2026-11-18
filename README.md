@@ -144,7 +144,7 @@ You can find launch examples in the [workflow demo](https://github.com/JBZoo/Csv
     #   Examples: p/file.csv; p/*.csv; p/**/*.csv; p/**/name-*.csv; **/*.csv
     csv: './tests/**/*.csv'
 
-    # Specify the path(s) to the schema file(s), supporting YAML, JSON, or PHP formats.
+    # Specify the path(s) to the schema file(s), supporting YAML or JSON formats (PHP schemas are disabled in the action).
     #   Similar to CSV paths, you can direct to specific files or search directories with glob patterns.
     #   Examples: p/file.yml; p/*.yml; p/**/*.yml; p/**/name-*.yml; **/*.yml
     schema: './tests/**/*.yml'
@@ -221,6 +221,8 @@ make build
 
 Define your CSV validation schema in YAML for clear and structured configuration. Alternative formats are also
 supported: [JSON](schema-examples/full.json) and [PHP](schema-examples/full.php), accommodating various preferences and workflow requirements.
+A PHP schema is executed rather than parsed, so it is only loaded as a top-level schema with `--allow-php-schemas`,
+and never through `presets`. Presets must be YAML or JSON files inside the working directory.
 
 The provided example illustrates a schema for a CSV file with a header row. It mandates that the `id`
 column must not be empty and should only contain integer values. Additionally, the `name` column is required to have a
@@ -1508,6 +1510,8 @@ Options:
                                    Available options: text, table, github, gitlab, teamcity, junit
                                     [default: "table"]
       --dump-schema                Dumps the schema of the CSV file if you want to see the final schema after inheritance.
+      --allow-php-schemas          Allows top-level schemas written in PHP. A PHP schema is executed,
+                                   so only use it for files you trust. Presets are never loaded from PHP files.
       --debug                      Intended solely for debugging and advanced profiling purposes.
                                    Activating this option provides detailed process insights,
                                    useful for troubleshooting and performance analysis.
@@ -1569,6 +1573,8 @@ Options:
                                  Available options: text, table, github, gitlab, teamcity, junit
                                   [default: "table"]
       --dump-schema              Dumps the schema of the CSV file if you want to see the final schema after inheritance.
+      --allow-php-schemas        Allows top-level schemas written in PHP. A PHP schema is executed,
+                                 so only use it for files you trust. Presets are never loaded from PHP files.
       --debug                    Intended solely for debugging and advanced profiling purposes.
                                  Activating this option provides detailed process insights,
                                  useful for troubleshooting and performance analysis.
@@ -1673,6 +1679,8 @@ Options:
                                      Available options: text, table, github, gitlab, teamcity, junit
                                       [default: "table"]
       --dump-schema                  Dumps the schema of the CSV file if you want to see the final schema after inheritance.
+      --allow-php-schemas            Allows top-level schemas written in PHP. A PHP schema is executed,
+                                     so only use it for files you trust. Presets are never loaded from PHP files.
       --debug                        Intended solely for debugging and advanced profiling purposes.
                                      Activating this option provides detailed process insights,
                                      useful for troubleshooting and performance analysis.

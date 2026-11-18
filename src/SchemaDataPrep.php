@@ -137,17 +137,44 @@ final class SchemaDataPrep
             self::validateAlias($alias);
 
             if (\is_array($includedPathOrArray)) {
-                $presets[$alias] = new Schema($includedPathOrArray);
-            } elseif (\file_exists($includedPathOrArray)) {
-                $presets[$alias] = (new Schema($includedPathOrArray));
-            } elseif (\file_exists("{$this->basepath}/{$includedPathOrArray}")) {
-                $presets[$alias] = (new Schema("{$this->basepath}/{$includedPathOrArray}"));
+                $presets[$alias] = new Schema($includedPathOrArray, true);
             } else {
-                throw new Exception("Unknown included file: \"{$includedPathOrArray}\"");
+                $presets[$alias] = new Schema($this->resolvePresetPath((string)$includedPathOrArray), true);
             }
         }
 
         return $presets;
+    }
+
+    /**
+     * A preset is a schema file inside the working directory, reached by a plain path (no stream wrapper).
+     */
+    private function resolvePresetPath(string $path): string
+    {
+        // Two or more letters before ":" is a URL scheme or stream wrapper (phar:, data:, http:); "C:" is a drive.
+        if ($path === '' || \str_contains($path, "\0") || \preg_match('/^[a-z][a-z\d+.-]+:/i', $path) === 1) {
+            throw new Exception("Invalid preset path: \"{$path}\"");
+        }
+
+        foreach ([$path, "{$this->basepath}/{$path}"] as $candidate) {
+            if (!\file_exists($candidate)) {
+                continue;
+            }
+
+            $realPath = \realpath($candidate);
+            $root = \realpath((string)\getcwd());
+            if ($realPath === false || $root === false || !self::isInside($realPath, $root)) {
+                throw new Exception("Preset must be inside the working directory: \"{$path}\"");
+            }
+
+            if (!\is_file($realPath)) {
+                throw new Exception("Preset is not a file: \"{$path}\"");
+            }
+
+            return $realPath;
+        }
+
+        throw new Exception("Unknown included file: \"{$path}\"");
     }
 
     private function getParentSchema(string $alias): Schema
@@ -250,6 +277,13 @@ final class SchemaDataPrep
         unset($actualRules['preset']);
 
         return $actualRules;
+    }
+
+    private static function isInside(string $path, string $root): bool
+    {
+        $root = \rtrim($root, '/\\');
+
+        return $path === $root || \str_starts_with($path, $root . \DIRECTORY_SEPARATOR);
     }
 
     private static function parseAliasParts(string $preset): array
