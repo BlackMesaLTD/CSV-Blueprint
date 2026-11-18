@@ -113,6 +113,48 @@ final class SchemaLimitsTest extends TestCase
         $this->assertError('uses-big.yml', 'more than the limit of ' . Schema::MAX_FILE_SIZE);
     }
 
+    public function testSharedPresetsAreLoadedOnce(): void
+    {
+        // Six presets per level, all pointing at the next level: 6^12 loads without memoisation.
+        $depth = 12;
+
+        for ($level = 0; $level < $depth; $level++) {
+            $next = $level + 1;
+            $presets = \implode('', \array_map(static fn (int $i): string => "  p{$i}: ./L{$next}.yml\n", \range(1, 6)));
+            $this->write("L{$level}.yml", "presets:\n{$presets}columns:\n  - preset: 'p1/id'\n");
+        }
+        $this->write("L{$depth}.yml", "columns:\n  - name: id\n    rules: { is_int: true }\n");
+
+        $started = \microtime(true);
+        $schema = new Schema("{$this->dir}/L0.yml");
+
+        isSame('id', $schema->getColumn(0)?->getName());
+        isTrue(\microtime(true) - $started < 5, 'took ' . \round(\microtime(true) - $started, 1) . ' s');
+    }
+
+    public function testTooManyPresetFilesAreRefused(): void
+    {
+        $presets = '';
+
+        for ($i = 0; $i <= Schema::MAX_PRESET_FILES; $i++) {
+            $this->write("p{$i}.yml", "columns:\n  - name: id\n");
+            $presets .= "  p{$i}: ./p{$i}.yml\n";
+        }
+        $this->write('many.yml', "presets:\n{$presets}");
+
+        $this->assertError('many.yml', 'A schema may load at most ' . Schema::MAX_PRESET_FILES . ' preset files');
+    }
+
+    public function testPresetsAreLoadedFreshForEachSchema(): void
+    {
+        $this->write('base.yml', "columns:\n  - name: first\n");
+        $this->write('top.yml', "presets:\n  base: ./base.yml\ncolumns:\n  - preset: 'base/0'\n");
+        isSame('first', (new Schema("{$this->dir}/top.yml"))->getColumn(0)?->getName());
+
+        $this->write('base.yml', "columns:\n  - name: second\n");
+        isSame('second', (new Schema("{$this->dir}/top.yml"))->getColumn(0)?->getName());
+    }
+
     private function write(string $name, string $content): void
     {
         \file_put_contents("{$this->dir}/{$name}", $content);

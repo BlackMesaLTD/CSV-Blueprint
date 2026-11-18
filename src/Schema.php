@@ -38,12 +38,18 @@ final class Schema
     /** Deepest chain of presets (a schema whose preset has a preset ...). */
     public const MAX_PRESET_DEPTH = 16;
 
+    /** Most preset files one top-level schema may load. Each file is loaded once, however often it's referenced. */
+    public const MAX_PRESET_FILES = 256;
+
     public const ENCODING_UTF8 = 'utf-8';
     public const ENCODING_UTF16 = 'utf-16';
     public const ENCODING_UTF32 = 'utf-32';
 
     /** @var string[] real paths of the schema files being loaded, outermost first */
     private static array $loading = [];
+
+    /** @var array<string, self> preset files already loaded for the current top-level schema, by real path */
+    private static array $presets = [];
 
     /** @var Column[] */
     private array        $columns;
@@ -56,6 +62,10 @@ final class Schema
      */
     public function __construct(array|string|null $csvSchemaFilenameOrArray = null, bool $isPreset = false)
     {
+        if (!$isPreset) {
+            self::$presets = []; // a new top-level schema: presets are loaded fresh
+        }
+
         if (\is_array($csvSchemaFilenameOrArray)) {
             $this->filename = '_custom_array_';
             $data = new Data($csvSchemaFilenameOrArray);
@@ -399,6 +409,25 @@ final class Schema
         }
 
         return \trim($ymlAsString);
+    }
+
+    /**
+     * Loads a preset file once per top-level schema. Without this, presets that share a preset (A uses B and C, and
+     * both use D) load it once per reference, and a few levels of that multiply into millions of loads.
+     */
+    public static function loadPreset(string $realPath): self
+    {
+        if (!isset(self::$presets[$realPath])) {
+            if (\count(self::$presets) >= self::MAX_PRESET_FILES) {
+                throw new Exception(
+                    'A schema may load at most ' . self::MAX_PRESET_FILES . " preset files: {$realPath}",
+                );
+            }
+
+            self::$presets[$realPath] = new self($realPath, true);
+        }
+
+        return self::$presets[$realPath];
     }
 
     /**
