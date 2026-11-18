@@ -20,6 +20,7 @@ use JBZoo\CsvBlueprint\Rules\Cell\AzureServiceTag;
 use JBZoo\PHPUnit\Rules\TestAbstractCellRule;
 
 use function JBZoo\PHPUnit\isSame;
+use function JBZoo\PHPUnit\isTrue;
 
 final class AzureServiceTagTest extends TestAbstractCellRule
 {
@@ -60,6 +61,26 @@ final class AzureServiceTagTest extends TestAbstractCellRule
         isSame(
             'Value "Internet" is an Azure service tag that can\'t be used in Azure Firewall rules',
             $this->create('firewall')->test('Internet'),
+        );
+    }
+
+    public function testLongValuesAreCheckedQuickly(): void
+    {
+        $rule = $this->create('nsg');
+        $value = \str_repeat('x', 20_000);
+
+        $started = \microtime(true);
+
+        for ($i = 0; $i < 50; $i++) {
+            $rule->test($value);
+        }
+
+        isSame("Value \"{$value}\" is not an Azure service tag", $rule->test($value));
+        isTrue(\microtime(true) - $started < 1, 'took ' . \round(\microtime(true) - $started, 2) . ' s');
+        isSame(
+            'Value "' . \str_repeat('a', 64) . '" is not an Azure service tag',
+            $rule->test(\str_repeat('a', 64)),
+            'no near match',
         );
     }
 

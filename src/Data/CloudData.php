@@ -25,6 +25,9 @@ final class CloudData
     public const AZURE_SERVICE_TAGS = __DIR__ . '/azure-service-tags.json';
     public const AWS_REGIONS = __DIR__ . '/aws-regions.json';
 
+    /** Longest value a typo suggestion is looked for: longer than any service tag (47) or region (14). */
+    public const MAX_SUGGEST_LENGTH = 64;
+
     /** @var array<string, array<string, mixed>> */
     private static array $cache = [];
 
@@ -63,19 +66,33 @@ final class CloudData
     }
 
     /**
-     * The closest candidate within two edits (case-insensitive), to suggest a fix for a typo.
+     * The closest candidate within two edits (case-insensitive), to suggest a fix for a typo. Cell values can be
+     * any size, so values longer than any real name get no suggestion, and candidates that differ in length by more
+     * than two (so can't be within two edits) are skipped without computing the distance.
      * @param string[] $candidates
      */
     public static function closest(string $value, array $candidates): ?string
     {
+        $length = \strlen($value);
+        if ($length > self::MAX_SUGGEST_LENGTH) {
+            return null;
+        }
+
         $value = \strtolower($value);
         $best = null;
         $bestDistance = 3;
 
         foreach ($candidates as $candidate) {
+            if (\abs(\strlen($candidate) - $length) >= $bestDistance) {
+                continue;
+            }
+
             $distance = \levenshtein($value, \strtolower($candidate));
             if ($distance < $bestDistance) {
                 [$best, $bestDistance] = [$candidate, $distance];
+                if ($distance === 0) {
+                    break; // the same name in another case: nothing closer exists
+                }
             }
         }
 
