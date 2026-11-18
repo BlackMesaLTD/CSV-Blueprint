@@ -16,6 +16,8 @@ declare(strict_types=1);
 
 namespace JBZoo\CsvBlueprint\Rules\Cell;
 
+use JBZoo\CsvBlueprint\Utils;
+
 final class IsDirExists extends AbstractCellRule
 {
     public function getHelpMeta(): array
@@ -23,14 +25,22 @@ final class IsDirExists extends AbstractCellRule
         return [
             [],
             [
-                self::DEFAULT => ['true', "Check if directory exists on the filesystem (It's FS IO operation!)."],
+                self::DEFAULT => [
+                    'true',
+                    "Check if directory exists inside the working directory (It's FS IO operation!).",
+                ],
             ],
         ];
     }
 
     public function validateRule(string $cellValue): ?string
     {
-        if (!\file_exists($cellValue)) {
+        [$path, $reason] = Utils::resolveDataPath($cellValue);
+        if ($path === null) {
+            return "Directory \"<c>{$cellValue}</c>\" {$reason}";
+        }
+
+        if (!\is_dir($path)) {
             return "Directory \"<c>{$cellValue}</c>\" not found";
         }
 

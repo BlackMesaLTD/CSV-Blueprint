@@ -290,8 +290,8 @@ columns:
       language_code: alpha-2            # Examples: "en", "eng"
 
       # Filesystem (with IO!)
-      is_file_exists: true              # Check if file exists on the filesystem (It's FS IO operation!).
-      is_dir_exists: true               # Check if directory exists on the filesystem (It's FS IO operation!).
+      is_file_exists: true              # Check if file exists inside the working directory (It's FS IO operation!).
+      is_dir_exists: true               # Check if directory exists inside the working directory (It's FS IO operation!).
 
       # Mathematical
       is_fibonacci: true                # Validates whether the input follows the Fibonacci integer sequence. Example: "8", "13".
