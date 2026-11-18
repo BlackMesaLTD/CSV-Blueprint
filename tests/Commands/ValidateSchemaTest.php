@@ -177,7 +177,7 @@ final class ValidateSchemaTest extends TestCase
                 './schema-examples/*.json',
                 './schema-examples/*.php',
             ],
-        ]));
+        ]) . ' --allow-php-schemas');
 
         $expected = <<<'TXT'
             CSV Blueprint: Unknown version (PhpUnit)

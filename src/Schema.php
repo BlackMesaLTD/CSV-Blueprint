@@ -29,6 +29,9 @@ use function JBZoo\Data\yml;
 
 final class Schema
 {
+    /** Allows top-level PHP schemas when set to "1" (see --allow-php-schemas). PHP presets are never loaded. */
+    public const ENV_ALLOW_PHP = 'CSV_BLUEPRINT_ALLOW_PHP_SCHEMAS';
+
     public const ENCODING_UTF8 = 'utf-8';
     public const ENCODING_UTF16 = 'utf-16';
     public const ENCODING_UTF32 = 'utf-32';
@@ -38,7 +41,11 @@ final class Schema
     private ?string      $filename;
     private AbstractData $internalState;
 
-    public function __construct(array|string|null $csvSchemaFilenameOrArray = null)
+    /**
+     * @param null|array|string $csvSchemaFilenameOrArray schema data, or the path of a YAML, JSON or PHP file
+     * @param bool              $isPreset                 true when loaded through another schema's `presets`
+     */
+    public function __construct(array|string|null $csvSchemaFilenameOrArray = null, bool $isPreset = false)
     {
         if (\is_array($csvSchemaFilenameOrArray)) {
             $this->filename = '_custom_array_';
@@ -61,6 +68,15 @@ final class Schema
             } elseif ($fileExtension === 'json') {
                 $data = json($csvSchemaFilenameOrArray);
             } elseif ($fileExtension === 'php') {
+                // A PHP schema is executed, not parsed: only ever load one the operator chose to trust.
+                if ($isPreset) {
+                    throw new Exception("PHP schemas can't be used as presets: {$csvSchemaFilenameOrArray}");
+                }
+                if (!self::phpSchemasAllowed()) {
+                    throw new Exception(
+                        "PHP schemas are disabled. Use --allow-php-schemas to load: {$csvSchemaFilenameOrArray}",
+                    );
+                }
                 $data = phpArray($csvSchemaFilenameOrArray);
             } else {
                 throw new Exception("Unsupported file extension: {$fileExtension}");
@@ -388,6 +404,14 @@ final class Schema
         }
 
         return \trim($ymlAsString);
+    }
+
+    /**
+     * Whether top-level PHP schemas may be loaded. Read from the environment so parallel workers see it too.
+     */
+    public static function phpSchemasAllowed(): bool
+    {
+        return \getenv(self::ENV_ALLOW_PHP) === '1';
     }
 
     /**

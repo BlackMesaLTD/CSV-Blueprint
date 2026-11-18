@@ -176,6 +176,7 @@ final class SchemaTest extends TestCase
 
     public function testValidateItself(): void
     {
+        \putenv(Schema::ENV_ALLOW_PHP . '=1'); // these are the project's own, trusted PHP schemas
         $list = [
             Tools::SCHEMA_FULL_YML  => yml(Tools::SCHEMA_FULL_YML),
             Tools::SCHEMA_FULL_JSON => json(Tools::SCHEMA_FULL_JSON),
@@ -190,6 +191,8 @@ final class SchemaTest extends TestCase
             $schema = new Schema($path);
             isSame('', (string)$schema->validate());
         }
+
+        \putenv(Schema::ENV_ALLOW_PHP);
     }
 
     public function testValidateValidSchemaFixtures(): void
