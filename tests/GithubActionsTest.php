@@ -60,7 +60,7 @@ final class GithubActionsTest extends TestCase
 
         $expectedMessage = [
             '```yml',
-            '- uses: jbzoo/csv-blueprint@master # See the specific version on releases page. `@master` is latest.',
+            '- uses: BlackMesaLTD/CSV-Blueprint@<release commit SHA> # <version>. Pin a release commit; see SECURITY.md.',
             '  with:',
         ];
 
