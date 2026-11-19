@@ -1,10 +1,10 @@
 # CSV Blueprint
 
 <!-- auto-update:top-badges -->
-[![CI](https://github.com/JBZoo/Csv-Blueprint/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/JBZoo/Csv-Blueprint/actions/workflows/main.yml?query=branch%3Amaster)
-[![CI](https://github.com/JBZoo/Csv-Blueprint/actions/workflows/demo.yml/badge.svg)](https://github.com/JBZoo/Csv-Blueprint/actions/workflows/demo.yml)
-[![Psalm Coverage](https://shepherd.dev/github/JBZoo/Csv-Blueprint/coverage.svg)](https://shepherd.dev/github/JBZoo/Csv-Blueprint)
-[![Docker Pulls](https://img.shields.io/docker/pulls/jbzoo/csv-blueprint.svg)](https://hub.docker.com/r/jbzoo/csv-blueprint/tags)
+[![CI](https://github.com/BlackMesaLTD/CSV-Blueprint/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/BlackMesaLTD/CSV-Blueprint/actions/workflows/main.yml?query=branch%3Amain)
+[![Release](https://img.shields.io/github/v/release/BlackMesaLTD/CSV-Blueprint)](https://github.com/BlackMesaLTD/CSV-Blueprint/releases/latest)
+[![Image](https://img.shields.io/badge/image-ghcr.io-blue)](https://github.com/BlackMesaLTD/CSV-Blueprint/pkgs/container/csv-blueprint)
+[![Fork of JBZoo/CSV-Blueprint](https://img.shields.io/badge/fork%20of-JBZoo%2FCSV--Blueprint-gray)](https://github.com/JBZoo/CSV-Blueprint)
 <!-- auto-update:/top-badges -->
 
 <!-- auto-update:rules-counter -->
@@ -12,7 +12,7 @@
 [![Static Badge](https://img.shields.io/badge/Rules-134-green?label=Cell%20rules&labelColor=blue&color=gray)](src/Rules/Cell)
 [![Static Badge](https://img.shields.io/badge/Rules-206-green?label=Aggregate%20rules&labelColor=blue&color=gray)](src/Rules/Aggregate)
 [![Static Badge](https://img.shields.io/badge/Rules-8-green?label=Extra%20checks&labelColor=blue&color=gray)](#extra-checks)
-[![Static Badge](https://img.shields.io/badge/Rules-31/11/20-green?label=Plan%20to%20add&labelColor=gray&color=gray)](tests/schemas/todo.yml)
+[![Static Badge](https://img.shields.io/badge/Rules-30/11/19-green?label=Plan%20to%20add&labelColor=gray&color=gray)](tests/schemas/todo.yml)
 <!-- auto-update:/rules-counter -->
 
 Strict and automated line-by-line CSV validation tool based on customizable Yaml schemas.
@@ -22,6 +22,36 @@ In seconds, make sure every char in a gigabyte file meets your expectations.
 ![Intro](.github/assets/intro.png)
 
 I believe it is the simplest yet flexible and powerful CSV validator in the world. ☺️
+
+## About this fork
+
+CSV Blueprint was created by [Denis Smetannikov](https://github.com/SmetDenis) as part of the
+[JBZoo](https://github.com/JBZoo/CSV-Blueprint) toolbox. This repository is a fork maintained by Black Mesa, which uses
+it to check infrastructure CSVs (network security rules and the like) in pull-request CI. The original project isn't
+taking outside pull requests, so the changes live here. Everything this README doesn't mark as the fork's is the
+original author's work and words.
+
+What the fork adds:
+
+- **Network and cloud rules:** `is_cidr` (no host bits set; the error names the correct block), `is_port`,
+  `is_port_range`, `azure_service_tag`, `is_aws_region` and `aws_resource_id`. Service tags and regions come from
+  Microsoft's and AWS's published data, refreshed weekly.
+- **`any_of`** (a value passes if any group of rules passes) and **`multiple`** (several values in one cell, each
+  checked against the column's rules). Both were on the author's [roadmap](#coming-soon).
+- **Hardening for untrusted input (2.0.0).** The original was designed as a tool you run on your own files and
+  schemas. In pull-request CI, the files, schemas and presets come from contributors, which is a different threat
+  model, so 2.0.0 adds the controls that setting needs:
+  - PHP schemas only on request, never through presets;
+  - paths kept inside the working directory, with no symlinks;
+  - CI output that input can't turn into workflow commands;
+  - limits on preset expansion;
+  - a release image that is pinned by digest, built from pinned inputs and attested.
+
+  [SECURITY.md](SECURITY.md) has the details and how to run the action safely.
+
+The rule engine, the presets, the reports and the benchmarks are the original author's design. That design (one class
+per rule, documentation generated from the code, and a strict test suite) is what made these changes quick to
+write and check.
 
 ## Features
 
@@ -73,9 +103,9 @@ See [CLAUDE.md](CLAUDE.md) for schema repository structure recommendations and t
 
 ### Live demo
 
-As a live demonstration of how the tool works, you can explore the super minimal repository
+As a live demonstration of how the tool works, you can explore the original project's super minimal repository
 at [demo](https://github.com/jbzoo/csv-blueprint-demo). For more complex examples and various reporting methods, take a look at
-the [demo pipeline](https://github.com/JBZoo/CSV-Blueprint/actions/runs/8667852752/job/23771733937) with different reports types.
+the original project's [demo pipeline](https://github.com/JBZoo/CSV-Blueprint/actions/workflows/demo.yml) with different reports types.
 
 See also:
 
@@ -88,6 +118,7 @@ See also:
 
 ## Table of content
 <!-- auto-update:toc -->
+- [About this fork](#about-this-fork)
 - [Features](#features)
 - [Table of content](#table-of-content)
 - [Usage](#usage)
@@ -111,29 +142,34 @@ See also:
 
 Ensure you have Docker installed on your machine.
 
+This fork publishes its image to the GitHub Container Registry. The `jbzoo/csv-blueprint` images on Docker Hub are
+the original project's and don't include this fork's changes.
+
 ```sh
-# Pull the Docker image
-docker pull jbzoo/csv-blueprint:latest
+# Pull the Docker image (pin a version, or a digest from the release notes)
+docker pull ghcr.io/blackmesaltd/csv-blueprint:2.0.0
 
 # Run the tool inside Docker
 docker run --rm                                  \
     --workdir=/parent-host                       \
     -v $(pwd):/parent-host                       \
-    jbzoo/csv-blueprint:latest                   \
+    ghcr.io/blackmesaltd/csv-blueprint:2.0.0     \
     validate-csv                                 \ # See available commands and options below.
     --csv=./tests/fixtures/demo.csv              \ # Your CSV(s).
     --schema=./tests/schemas/demo_invalid.yml    \ # Your schema(s).
     --ansi
 
 # OR build it from source.
-git clone git@github.com:jbzoo/csv-blueprint.git csv-blueprint
+git clone git@github.com:BlackMesaLTD/CSV-Blueprint.git csv-blueprint
 cd csv-blueprint
 make docker-build  # local tag is "jbzoo/csv-blueprint:local"
 ```
 
 ### GitHub Action
 
-You can find launch examples in the [workflow demo](https://github.com/JBZoo/Csv-Blueprint-Demo/blob/master/.github/workflows/demo.yml#L18-L22).
+You can find launch examples in the original project's [workflow demo](https://github.com/JBZoo/Csv-Blueprint-Demo/blob/master/.github/workflows/demo.yml#L18-L22).
+With this fork, pin the release commit named in the [release notes](https://github.com/BlackMesaLTD/CSV-Blueprint/releases/latest):
+its `action.yml` names the image by digest, so the pinned commit always runs exactly the image built for it.
 
 <!-- auto-update:github-actions-yml -->
 ```yml
@@ -193,13 +229,14 @@ Ensure you have PHP installed on your machine.
 
 ```sh
 # Just download the latest version
-wget https://github.com/jbzoo/csv-blueprint/releases/latest/download/csv-blueprint.phar
+wget https://github.com/BlackMesaLTD/CSV-Blueprint/releases/latest/download/csv-blueprint.phar
 chmod +x ./csv-blueprint.phar
 ./csv-blueprint.phar validate-csv               \
    --csv=./tests/fixtures/demo.csv              \
    --schema=./tests/schemas/demo_invalid.yml
 
-# OR create project via Composer (--no-dev is optional)
+# OR create project via Composer (--no-dev is optional).
+# Note: Packagist's jbzoo/csv-blueprint is the original project, without this fork's changes.
 composer create-project --no-dev jbzoo/csv-blueprint
 cd ./csv-blueprint
 ./csv-blueprint validate-csv                    \
@@ -207,7 +244,7 @@ cd ./csv-blueprint
     --schema=./tests/schemas/demo_invalid.yml
 
 # OR build from source
-git clone git@github.com:jbzoo/csv-blueprint.git csv-blueprint
+git clone git@github.com:BlackMesaLTD/CSV-Blueprint.git csv-blueprint
 cd csv-blueprint
 make build
 ./csv-blueprint validate-csv                    \
@@ -586,7 +623,7 @@ columns:
       is_iban: true                     # IBAN - International Bank Account Number. See: https://en.wikipedia.org/wiki/International_Bank_Account_Number
       is_bic: true                      # Validates a Bank Identifier Code (BIC) according to ISO 9362 standards. See: https://en.wikipedia.org/wiki/ISO_9362
       is_imei: true                     # Validates an International Mobile Equipment Identity (IMEI). See: https://en.wikipedia.org/wiki/International_Mobile_Station_Equipment_Identity
-      is_isbn: true                     # Validates an International Standard Book Number (ISBN). See: https://www.isbn-international.org/content/what-isbn
+      is_isbn: true                     # Validates an International Standard Book Number (ISBN). See: https://en.wikipedia.org/wiki/ISBN
 
       # Misc
       is_version: true                  # Validates the string as version numbers using Semantic Versioning. Example: "1.2.3".
@@ -1952,7 +1989,7 @@ Make sure you have PHP 8.4+ and Docker installed.
 
 ```shell
 # Clone the latest version
-git clone git@github.com:jbzoo/csv-blueprint.git csv-blueprint
+git clone git@github.com:BlackMesaLTD/CSV-Blueprint.git csv-blueprint
 cd csv-blueprint
 
 # download dependencies and build the tool.
@@ -2012,7 +2049,7 @@ It's random ideas and plans. No promises and deadlines. Feel free to [help me!](
 
 - **Validation**
   - Multi `filename_pattern`. Support list of regexs.
-  - Multi values in one cell.
+  - ~~Multi values in one cell.~~ Done in this fork: the `multiple` column option.
   - Custom cell rule as a callback. It's useful when you have a complex rule that can't be described in the schema file.
   - Custom agregate rule as a callback. It's useful when you have a complex rule that can't be described in the schema file.
   - Configurable keyword for null/empty values. By default, it's an empty string. But you will use `null`, `nil`, `none`, `empty`, etc.
@@ -2020,6 +2057,7 @@ It's random ideas and plans. No promises and deadlines. Feel free to [help me!](
   - Handle empty files and files with only a header row, or only with one line of data. One column wthout header is also possible.
   - If option `--schema` is not specified, then validate only super base level things (like "is it a CSV file?").
   - Complex rules (like "if field `A` is not empty, then field `B` should be not empty too").
+    This fork's `any_of` covers "one of these groups of rules" for a single cell; rules across columns are still open.
   - Extending with custom rules and custom report formats. Plugins?
   - Input encoding detection + `BOM` (right now it's experimental). It works but not so accurate... UTF-8 is the best choice for now.
 
@@ -2056,12 +2094,13 @@ I'm not sure if I will implement all of them. But I will try to do my best.
 
 ## Contributing
 <!-- auto-update:contributing -->
-If you have any ideas or suggestions, feel free to open an issue or create a pull request.
+If you have any ideas or suggestions, feel free to open an issue or create a pull request on
+[this fork](https://github.com/BlackMesaLTD/CSV-Blueprint). For security issues, see [SECURITY.md](SECURITY.md).
 
 ```sh
 # Fork the repo and build project
-git clone git@github.com:jbzoo/csv-blueprint.git ./jbzoo-csv-blueprint
-cd ./jbzoo-csv-blueprint
+git clone git@github.com:BlackMesaLTD/CSV-Blueprint.git ./csv-blueprint
+cd ./csv-blueprint
 make build
 
 # Make your local changes
@@ -2082,6 +2121,8 @@ make codestyle
 ## License
 
 [MIT License](LICENSE): It's like free pizza - enjoy it, share it, just don't sell it as your own. And remember, no warranty for stomach aches! 😅
+
+This fork keeps the original licence and copyright notice; its changes are released under the same terms.
 
 
 ## See also

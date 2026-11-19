@@ -89,28 +89,17 @@ final class PackageTest extends \JBZoo\Codestyle\PHPUnit\AbstractPackageTest
 
     public function testReadmeHeader(): void
     {
-        $expectedBadges = [];
+        // This fork's own CI, release and image, plus a link back to the original project.
+        $fork = 'https://github.com/BlackMesaLTD/CSV-Blueprint';
+        $badges = [
+            "[![CI]({$fork}/actions/workflows/main.yml/badge.svg?branch=main)]({$fork}/actions/workflows/main.yml?query=branch%3Amain)",
+            "[![Release](https://img.shields.io/github/v/release/BlackMesaLTD/CSV-Blueprint)]({$fork}/releases/latest)",
+            "[![Image](https://img.shields.io/badge/image-ghcr.io-blue)]({$fork}/pkgs/container/csv-blueprint)",
+            '[![Fork of JBZoo/CSV-Blueprint](https://img.shields.io/badge/fork%20of-JBZoo%2FCSV--Blueprint-gray)]'
+            . '(https://github.com/JBZoo/CSV-Blueprint)',
+        ];
 
-        foreach ($this->badgesTemplate as $badgeName) {
-            if ($badgeName === '__BR__') {
-                $expectedBadges[$badgeName] = ' ';
-            } else {
-                $testMethod = 'checkBadge' . \str_replace('_', '', \ucwords($badgeName, '_'));
-
-                if (\method_exists($this, $testMethod)) {
-                    $tmpBadge = $this->{$testMethod}();
-                    if ($tmpBadge !== null) {
-                        $expectedBadges[$badgeName] = $tmpBadge;
-                    }
-                } else {
-                    fail("Method not found: '{$testMethod}'");
-                }
-            }
-        }
-
-        $expectedBadgeLine = \implode("\n", $expectedBadges);
-
-        Tools::insertInReadme('top-badges', $expectedBadgeLine);
+        Tools::insertInReadme('top-badges', \implode("\n", $badges));
     }
 
     public static function testGithubActionsWorkflow(): void

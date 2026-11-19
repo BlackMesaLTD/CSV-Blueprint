@@ -71,11 +71,8 @@ columns:
       is_polish_id_card: true         # Validates a Polish identity card number.
       is_portuguese_nif: true         # Validates a Portuguese taxpayer number (NIF).
 
-      # Logical OR for group of rules. If one of the rules is true, then the column is valid.
-      group_or:
-        - not_empty: true
-          is_int: true
-        - length_min: 3
+      # Done in the BlackMesaLTD fork: logical OR for groups of cell rules is the `any_of` rule,
+      # and several values in one cell is the `multiple` column option.
 
       # Custom functions for validation
       custom_func_1: 'static fn (string $cellValue): bool => $cellValue !== "";' # eval????

@@ -307,7 +307,7 @@ columns:
       is_iban: true                     # IBAN - International Bank Account Number. See: https://en.wikipedia.org/wiki/International_Bank_Account_Number
       is_bic: true                      # Validates a Bank Identifier Code (BIC) according to ISO 9362 standards. See: https://en.wikipedia.org/wiki/ISO_9362
       is_imei: true                     # Validates an International Mobile Equipment Identity (IMEI). See: https://en.wikipedia.org/wiki/International_Mobile_Station_Equipment_Identity
-      is_isbn: true                     # Validates an International Standard Book Number (ISBN). See: https://www.isbn-international.org/content/what-isbn
+      is_isbn: true                     # Validates an International Standard Book Number (ISBN). See: https://en.wikipedia.org/wiki/ISBN
 
       # Misc
       is_version: true                  # Validates the string as version numbers using Semantic Versioning. Example: "1.2.3".
