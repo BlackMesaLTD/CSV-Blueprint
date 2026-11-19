@@ -68,7 +68,7 @@ inputs:
 
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/blackmesaltd/csv-blueprint:1.3.0'
+  image: 'docker://ghcr.io/blackmesaltd/csv-blueprint:2.0.0@sha256:ba832d915324a359ea5c2d9bd02a831423bf5bb2562e11d8aee761aa3c451727'
   args:
     - validate:csv
     - '--csv'
