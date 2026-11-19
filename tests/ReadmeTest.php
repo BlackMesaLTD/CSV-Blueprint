@@ -134,7 +134,6 @@ final class ReadmeTest extends TestCase
                 'filename_pattern - multiple',
                 'column.faker',
                 'column.null_values',
-                'column.multiple + column.multiple_separator',
             ]) + \count($todoYml->findArray('structural_rules'))
             + \count($todoYml->findArray('complex_rules')),
         ]);
